@@ -1,0 +1,51 @@
+{
+    "library_name": "210616_Schumacher",
+    "lib_forward_read_length": 75,
+    "lib_reverse_read_length": 0,
+    "UMI": "Quantseq FWD",
+    "reference": "GRCh38-p10",
+    "RNAseq_type": "quant_fwd",
+    "type_of_extraction": "PolyA",
+    "barcode_mismatches": 0,
+    "base_mask_field": "",
+    "no_lane_splitting": true,
+    "additional_options": "",
+    "trim_adapters": "",
+    "mark_duplicates": true,
+    "trim_quality": false,
+    "umi_usage": "mark_duplicates",
+    "remove_duplicates": true,
+    "keep_not_markDups_bam": false,
+    "max_intron": 1000000,
+    "strandness": "fwd",
+    "trim_left1": 12,
+    "trim_left2": 0,
+    "trim_right1": 0,
+    "trim_right2": 0,
+    "map_score": "0.66",
+    "map_perc": "0.66",
+    "perc_mismatch": "0.66",
+    "min_length": 35,
+    "count_over": "exon",
+    "qc_samtools": true,
+    "qc_qualimap_DNA": false,
+    "qc_picard_DNA": false,
+    "cross_sample_correlation": false,
+    "qc_dupradar_RNA": true,
+    "qc_qualimap_RNA": true,
+    "qc_picard_RNA": true,
+    "qc_biotypes_RNA": true,
+    "qc_fastq_screen_RNA": true,
+    "qc_RSeQC_RNA": true,
+    "feature_count": true,
+    "RSEM_count": false,
+    "max_mapped_reads_to_run_biobloom": 100,
+    "samples": {
+        "149": {
+            "sample_name": "Mut-1"
+        },
+        "150": {
+            "sample_name": "Mut-2"
+        }
+    }
+}

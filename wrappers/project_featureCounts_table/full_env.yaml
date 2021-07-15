@@ -1,0 +1,22 @@
+channels:
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - python=3.6.2
+  - r-base=3.4
+  - rpy2
+  - r-data.table 
+  - r-rgl 
+  - bioconductor-deseq2 
+  - r-gsubfn 
+  - r-jsonlite 
+  - r-gplots 
+  - r-rcolorbrewer
+  - r-ggplot2
+  - r-ggrepel
+  - r-dplyr
+  - r-pheatmap
+  - bioconductor-edger
+  - bioconductor-limma
