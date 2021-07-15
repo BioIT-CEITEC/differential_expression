@@ -20,7 +20,7 @@ run_all <- function(args){
   if(ref_from_trans_assembly){
     feat_type <- "transcript"
     annotate_by<- c("gene_name","gene_id", "strand")  
-    gtf_file <- "/mnt/ssd/ssd_3/references/termite/Peska_transcriptome/annot/Peska_transcriptome.gtf"
+    gtf_file <- args[3]
     gtf <- as.data.table(rtracklayer::import(gtf_file))[type == feat_type, c("seqnames","start","end",annotate_by), with=F]
     
     gtf[,first_annot := tstrsplit(gtf$gene_name,split = ",")[3]]

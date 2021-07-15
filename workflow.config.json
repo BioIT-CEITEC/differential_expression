@@ -6,21 +6,22 @@
     "type":"alignment_qc",
     "inputs":[
       "qc_reports/{sample}/raw_fastqc/*",
-      "mapped/*",
-      "cleaned_fastq/{sample}*fastq.gz",
-      "raw_fastq/{sample}*fastq.gz"
+      "qc_reports/{sample}/rsem_count/{sample}.genes.results",
+      "feature_counts/{sample}.featureCounts.tsv"
     ],
     "outputs":[
-      "qc_reports/*"
+      "results/*"
     ],
-    "report_index": "qc_reports/final_alignment_report.html",
+    "report_index": "results/{comparison}/{biotype}/edgeR.tsv",
     "reports":[
-       "qc_reports/*"
+       "results/*"
     ]
   },
   "general_params": [
     "library_name",
     "sample_name",
+    "condition",
+    "tag",
     "lib_forward_read_length",
     "lib_reverse_read_length"
   ],
@@ -39,70 +40,36 @@
           "five_prime_utr": "Five prime UTR"
         }
       },
-      "qc_samtools": {
-        "label": "QC samtools",
-        "type": "bool",
-        "default": true
+      "biotypes": {
+        "label": "Biotypes",
+        "type": "string",
+        "default": "all"
       },
-      "qc_qualimap_DNA": {
-        "label": "QC qualimap DNA",
-        "type": "bool",
-        "default": true
+      "conditions_to_compare": {
+        "label": "Conditions to compare",
+        "type": "string",
+        "default": "all"
       },
-      "qc_picard_DNA": {
-        "label": "QC picard DNA",
-        "type": "bool",
-        "default": true
+      "use_tag_to_pair_samples": {
+        "label": "Use tag to pair samples",
+        "type": "enum",
+        "default": "false",
+        "list": {
+          "true": "True",
+          "false": "False"
+        }
+      }
+    },
+    "samples": {
+      "condition": {
+        "label": "Condition",
+        "type": "string",
+        "default": ""
       },
-      "cross_sample_correlation": {
-        "label": "Cross sample correlation",
-        "type": "bool",
-        "default": true
-      },
-      "qc_dupradar_RNA": {
-        "label": "QC dupradar RNA",
-        "type": "bool",
-        "default": true
-      },
-      "qc_qualimap_RNA": {
-        "label": "QC qualimap RNA",
-        "type": "bool",
-        "default": true
-      },
-      "qc_picard_RNA": {
-        "label": "QC picard RNA",
-        "type": "bool",
-        "default": true
-      },
-      "qc_biotypes_RNA": {
-        "label": "QC biotypes RNA",
-        "type": "bool",
-        "default": true
-      },
-      "qc_fastq_screen_RNA": {
-        "label": "QC fastq screen RNA",
-        "type": "bool",
-        "default": true
-      },
-      "qc_RSeQC_RNA": {
-        "label": "QC RSeQC RNA",
-        "type": "bool",
-        "default": true
-      },
-      "feature_count": {
-        "label": "Feature count",
-        "type": "bool",
-        "default": true
-      },
-      "RSEM_count": {
-        "label": "Gene count RSEM",
-        "type": "bool",
-        "default": true
-      },
-      "max_mapped_reads_to_run_biobloom": {
-        "label": "Biobloom - max mapped ratio",
-        "type": "int",
-        "default": 100
+      "tag": {
+        "label": "Tag",
+        "type": "string",
+        "default": ""
       }
     }
   }

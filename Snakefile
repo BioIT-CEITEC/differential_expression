@@ -10,8 +10,10 @@ GLOBAL_REF_PATH = "/mnt/ssd/ssd_3/references"
 
 # DNA parameteres processing
 #
+
 if not "ref_from_trans_assembly" in config:
     config["ref_from_trans_assembly"] = "F"
+
 
 
 
@@ -50,16 +52,14 @@ else:
 
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
-     lib_name="[^\.\/]+",
-     read_pair_tag = "(_R.)?"
+     lib_name="[^\.\/]+"
 
 ##### Target rules #####
 
 rule all:
-    input:  "qc_reports/final_alignment_report.html"
-
+    input:  expand("results/{comparison}/{biotype}/edgeR.tsv", comparison=comparison_dir_list, biotype=biotype_dir_list)
 
 
 ##### Modules #####
-include: "rules/prepare_reference.smk"
+
 include: "rules/differential_expression.smk"
