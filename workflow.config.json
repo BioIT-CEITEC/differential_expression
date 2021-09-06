@@ -1,16 +1,15 @@
 {
   "workflow_description": {
-    "name":"alignment_qc",
+    "name":"differential_expression",
     "version": 1.0,
-    "label":"Alignment QC",
-    "type":"alignment_qc",
+    "label":"Differential expression",
+    "type":"differential_expression",
     "inputs":[
-      "qc_reports/{sample}/raw_fastqc/*",
-      "qc_reports/{sample}/rsem_count/{sample}.genes.results",
-      "feature_counts/{sample}.featureCounts.tsv"
+      "qc_reports/{sample}/*/{sample}.*.*"
     ],
     "outputs":[
-      "results/*"
+      "results/*",
+      "logs/*"
     ],
     "report_index": "results/{comparison}/{biotype}/edgeR.tsv",
     "reports":[
@@ -27,19 +26,6 @@
   ],
   "gui_params" : {
     "detailed": {
-      "count_over": {
-        "label": "Count over",
-        "type": "enum",
-        "default": "exon",
-        "list": {
-          "exon": "Exon",
-          "gene": "Gene",
-          "transcript": "Transcript",
-          "mRNA": "mRNA",
-          "three_prime_utr": "Three prime UTR",
-          "five_prime_utr": "Five prime UTR"
-        }
-      },
       "biotypes": {
         "label": "Biotypes",
         "type": "string",
@@ -50,14 +36,58 @@
         "type": "string",
         "default": "all"
       },
+      "pvalue_for_viz": {
+        "label": "pvalue for viz",
+        "type": "string",
+        "default": "0.05"
+      },
+      "named_in_viz": {
+        "label": "Named in viz",
+        "type": "int",
+        "default": 20
+      },
+      "fold_change_threshold": {
+        "label": "Fold change threshold",
+        "type": "int",
+        "default": 2
+      },
       "use_tag_to_pair_samples": {
         "label": "Use tag to pair samples",
-        "type": "enum",
-        "default": "false",
-        "list": {
-          "true": "True",
-          "false": "False"
+        "type": "bool",
+        "default": false
+      },
+      "info": {
+        "label": "Info",
+        "type": "string",
+        "default": "",
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_tag_to_pair_samples": false
+            }
+          }
         }
+      },
+      "donor": {
+        "label": "Donor",
+        "type": "string",
+        "default": "UNK",
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_tag_to_pair_samples": false
+            }
+          }
+        }
+      },
+      "ref_from_trans_assembly": {
+        "label": "Reference from trans. assembly",
+        "type": "bool",
+        "default": false
       }
     },
     "samples": {
@@ -74,4 +104,3 @@
     }
   }
 }
-

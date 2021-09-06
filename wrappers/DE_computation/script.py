@@ -12,7 +12,7 @@ f.write("\n##\n## RULE: DE_computation \n##\n")
 f.close()
 
 command = " Rscript "+os.path.abspath(os.path.dirname(__file__))+"/mrna_de_counts.R "+\
-            snakemake.params.config+ " " +\
+            snakemake.input.cfg_tab+ " " +\
             snakemake.input.expression_tab+ " " +\
             os.path.dirname(snakemake.output.table)+ " " +\
             snakemake.input.sqlite+ " " +\

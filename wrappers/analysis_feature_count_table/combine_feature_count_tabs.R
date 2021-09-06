@@ -8,7 +8,7 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
     } else {
       res[,(add_column) := gsub(regex,"\\1",x)]
     }
-    
+    setnames(res,names(res)[7],"counts")
   }))
 }
 

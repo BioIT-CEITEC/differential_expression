@@ -2,7 +2,7 @@
 ####################################################################################################
 #
 # Script to calculate differential gene expression using DESeq2 and edgeR package
-# Designed for mRNA differential gene expression analysis based on Ensembl results using featureCounts, htseq-count, STAR counts
+# Designed for mRNA differential gene expression analysis based on Ensembl results using feature_count, htseq-count, STAR counts
 #
 ####################################################################################################
 ############################## ALWAYS CHECK DESIGNS AND CONTRASTS!!!! ##############################
@@ -16,7 +16,6 @@
 # parsed_ensembl - table with gene_id, gene_name and gene_biotype based in Ensembl
 # biotypes - table with name and biotype_group where name equals gene biotype
 ####################################################################################################
-# TODO: Add nice volcano and MA plots also for edgeR results if possible
 # TODO: Add tSNE clustering
 # TODO: Add shared DE genes visualization (inspiration at VBCF BioComp)
 ####################################################################################################
@@ -39,8 +38,11 @@ run_all <- function(args){
   ref_from_trans_assembly <- as.logical(toupper(args[10]))
 
   config_tab <- as.data.table(rjson::fromJSON(file = config_file))
+  config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
+  config_tab[,tag       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$tag)]
+  #config_tab[,full_name := paste0(config_tab$condition,"_",config_tab$tag)]
+  config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
 
-  orig_colnames_order <- config_tab$full_name
 
   #remove unused samples
   condition_design <- config_tab$conditions_to_compare[1]
@@ -105,9 +107,9 @@ run_all <- function(args){
   # Correct intercept in case PAIRED==T but INTERCEPT==F - it doesn't make too much sense
   if(PAIRED==TRUE){
     print("Making sure INTERCEPT==T because PAIRED==T. If you have specific reason not to set INTERCEPT==T if PAIRED==T please comment this section.")
-          INTERCEPT<-TRUE
+    INTERCEPT<-TRUE
   } else {
-    
+
     samples_desc[,patient := paste(patient,seq_along(patient),sep = "_")]
   }
   # ####################################################################################################
@@ -148,7 +150,7 @@ run_all <- function(args){
   coldata <- as.data.frame(samples_desc[,list(condition = factor(condition,levels = unique(condition)),patient = as.factor(patient))])
   rownames(coldata) <- samples_desc$sample
 
-  if(counts_type == "featureCounts"){
+  if(counts_type == "feature_count"){
     mrcounts <- as.data.frame(fread(counts_file))
     rownames(mrcounts) <- mrcounts$Geneid
   } else {
@@ -161,11 +163,11 @@ run_all <- function(args){
   ####################################################################################################
   ### Select only desired gene biotypes; replaced parsed Ensembl from Biomart
   # Prepare Ensembl annotation
-
+  library("R.utils")
   if(ref_from_trans_assembly != T){
-    if(organism == "homsap") {
+    if(organism == "homo_sapiens") {
       library("ensembldb")
-      
+
       EnsDb <- ensembldb::EnsDb(sqlite_path)
       #ensembldb::listColumns(EnsDb.Hsapiens.v87) # See all available columns
       #parsedEnsembl <- ensembldb::genes(EnsDb.Hsapiens.v87, filter=list(GeneBiotypeFilter(featuresToAnalyze2))) # Get only genes with specificed biotype(s)
@@ -178,17 +180,16 @@ run_all <- function(args){
     parsedEnsembl[is.na(parsedEnsembl$gene_name) | parsedEnsembl$gene_name %in% c("", " "), "gene_name"]<-parsedEnsembl[is.na(parsedEnsembl$gene_name) | parsedEnsembl$gene_name %in% c("", " "), "gene_id"] # Replace missing gene names by gene ids
     rownames(parsedEnsembl)<-parsedEnsembl$gene_id
   } else {
-    if(counts_type == "featureCounts"){
+    if(counts_type == "feature_count"){
       parsedEnsembl <- data.frame(gene_id = rownames(mrcounts),gene_name = rownames(mrcounts),gene_biotype = "protein_coding",row.names = rownames(mrcounts))
     }else{
       parsedEnsembl <- data.frame(gene_id = rownames(txi$counts),gene_name = rownames(txi$counts),gene_biotype = "protein_coding",row.names = rownames(txi$counts))
     }
   }
-  
 
-  if(counts_type == "featureCounts"){
+
+  if(counts_type == "feature_count"){
     # Reorder columns according to the description otherwise DESeq2 calls an error, if we read from a sample sheet
-
     mrcounts<-mrcounts[,match(rownames(coldata), colnames(mrcounts))]
 
     # Get only selected genes for a biotype
@@ -197,7 +198,7 @@ run_all <- function(args){
     # Remove not expressed genes in any sample
     mrcounts<-mrcounts[rowSums(mrcounts)!=0,]
   } else {
-    
+
     # Get only selected genes for a biotype
     # TODO - find out how to filter txi by one command
     txi$abundance<-txi$abundance[rownames(txi$abundance) %in% parsedEnsembl[parsedEnsembl$gene_biotype %in% featuresToAnalyze2,
@@ -239,16 +240,27 @@ run_all <- function(args){
   setwd(OUTPUT_DIR)
 
   ####################################################################################################
-  cond_colours<-brewer.pal(length(unique(conds)), "Paired")[as.factor(conds)]
+  library(ggplot2)
+  if(length(unique(conds)) >= 3){
+    num.conds = length(unique(conds))
+  }else{
+    num.conds = 3
+  }
+
+  cond_colours<-brewer.pal(num.conds, "Paired")[as.factor(conds)]
   names(cond_colours)<-conds
 
-  pdf(file="counts_barplot.pdf", width=10, height=8)
-  par(mar = c(7,5,4,2) + 0.1)
-  bp<-barplot(apply(mrcounts, 2, sum), las=2, col=cond_colours, ylim=c(0,(max(apply(mrcounts,2,sum)))*1.1))
-  text(bp, apply(mrcounts,2,sum), labels=apply(mrcounts, 2, sum), cex=1, pos=3) # https://stackoverflow.com/questions/27466035/adding-values-to-barplot-of-table-in-r
-  legend("topleft", levels((conds)), cex=0.6, fill=cond_colours[levels(conds)])
-  #  abline(h = 20000000, col="red")
-  dev.off()
+  bp <- ggplot(data.table(sample = colnames(mrcounts), value = colSums(mrcounts), condition=conds), aes(sample,value, fill=condition)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    scale_fill_manual(values = cond_colours) +
+    theme_bw() + theme(legend.position="bottom") +
+    xlab("") +
+    ylab("") +
+    ggtitle("Total Counts") +
+    theme(axis.text.x = element_text(angle = 90)) +
+    geom_text(data=data.table(sample = colnames(mrcounts), value = colSums(mrcounts), condition=conds),aes(x=sample,y=value,label=value),vjust=-0.2)
+
+  ggsave(filename = "counts_barplot.pdf", plot = bp, width = 7, height = 7, dpi = 600, device = "pdf")
 
   sink("DESeq2_design_control.txt")
   print(coldata)
@@ -260,7 +272,7 @@ run_all <- function(args){
   # Make the count object, normalise, dispersion and testing
   library("DESeq2")
 
-  if(counts_type == "featureCounts"){
+  if(counts_type == "feature_count"){
     # Design "design = ~0+condition" would be when we compare without a "common" intercept; when we have dependent before and after treatment patients intercept is on place; when
     #   we compare independent groups "~0+" should be on place https://support.bioconductor.org/p/69374/
     if(INTERCEPT==T){
@@ -327,7 +339,7 @@ run_all <- function(args){
 
   ####################################################################################################
 
-  pdf(file="DESeq2_disperison_plot.pdf")
+  pdf(file="DESeq2_disperison_plot.pdf", width=7, height=7)
   plotDispEsts(cds, main="Dispersion Plot")
   dev.off()
 
@@ -335,43 +347,137 @@ run_all <- function(args){
   normcounts<-counts(cds, normalized=TRUE) # Save normalized counts
   log2counts<-log2(normcounts+1) # Save log2 of normalized counts
 
-  vsd<-DESeq2::varianceStabilizingTransformation(cds) # Save counts tranformed with variance Stabilizing Transformation
+  vsd<-DESeq2::varianceStabilizingTransformation(cds) # Save counts transformed with variance Stabilizing Transformation
   vstcounts<-assay(vsd)
 
+  if(PAIRED==TRUE){ # If paired - remove batch effect
+    vsd_batch <- vsd
+    assay(vsd_batch) <- limma::removeBatchEffect(assay(vsd_batch), vsd_batch$patient) # Designed for log transform so we approximate it with vsd (less negative values than with rlog); we might get negative values which we 'round' to
+    vstcounts_batch <- assay(vsd_batch)
+    log2counts_batch<-limma::removeBatchEffect(log2(normcounts+1), cds$patient) # Save log2 of normalized counts
+    rawcounts_batch<-limma::removeBatchEffect(counts(cds, normalized=FALSE), cds$patient) # Save raw counts
+
+  }
+
+
   # Normalization check
-  pdf(file="pre_post_norm_counts.pdf")
-  par(mfrow=c(3,1))
-  #  par(mar = c(10,5,4,2) + 0.1)
-  barplot(colSums(rawcounts), col=cond_colours, las=2,cex.names=1.3,main="Pre Normalised Counts", ylim=c(0,(max(apply(rawcounts,2,sum)))*1.1))
-  plot(1, type="n", axes=F, xlab="", ylab="")
-  legend("center", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=0.6, horiz=TRUE)
-  barplot(colSums(normcounts), col=cond_colours, las=2, cex.names=1.3, main="Post Normalised Counts", ylim=c(0,(max(apply(normcounts,2,sum)))*1.1))
-  dev.off()
+
+  rawcountsum = colSums(rawcounts)
+  rawcountsum = as.data.frame(rawcountsum)
+  rawcountsum$Sample = row.names(rawcountsum)
+  rawcountsum = as.data.table(rawcountsum)
+  rawcountsum = melt(rawcountsum, id.vars = c("Sample"))
+  rawcountsum = rawcountsum[, .(Sample, condition=conds, value)]
+
+  normcountsum = colSums(normcounts)
+  normcountsum = as.data.frame(normcountsum)
+  normcountsum$Sample = row.names(normcountsum)
+  normcountsum = as.data.table(normcountsum)
+  normcountsum = melt(normcountsum, id.vars = c("Sample"))
+  normcountsum = normcountsum[, .(Sample, condition=conds, value)]
+
+  library(cowplot)
+  rcs=ggplot(rawcountsum, aes(Sample, value, fill=condition))+
+    geom_bar(stat = "identity", width = 0.8)+
+    scale_fill_manual(values = unique(cond_colours))+
+    theme_bw() +
+    ylab("") +
+    xlab("") +
+    ggtitle("Pre Normalised Counts") +
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(plot.title = element_text(face="bold"))
+
+  ncs=ggplot(normcountsum, aes(Sample, value, fill=condition))+
+    geom_bar(stat = "identity", width = 0.8)+
+    scale_fill_manual(values = unique(cond_colours))+
+    theme_bw() +
+    ylab("") +
+    xlab("") +
+    ggtitle("Post Normalised Counts") +
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(plot.title = element_text(face="bold"))
+
+  rcs_ncs = plot_grid(rcs,ncs,nrow=2)
+
+  # now add the title
+  if(length(condition_design) == 1){
+    count.title = "All samples"
+  }else{
+    count.title = paste0(condition_design[1]," vs ",condition_design[2])
+  }
+
+
+  title <- ggdraw() +
+    draw_label(count.title,
+      fontface = 'bold',
+      x = 0,
+      hjust = 0
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 7)
+    )
+
+  # rel_heights values control vertical title margins
+  title_rcs_ncs = plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
+
+  ggsave(filename = "pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
+  ggsave(filename = "pre_post_norm_counts.pdf", title_rcs_ncs, width = 7, height = 7, device = "pdf")
 
   # Heatmaps
   library("gplots")
 
+  if(length(condition_design) == 1){
+    hm.log.title = "Sample to Sample Correlation (Log2)"
+    hm.vst.title = "Sample to Sample Correlation (VST)"
+    hm.raw.title = "Sample to Sample Correlation (Raw Counts)"
+  }else{
+    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2])
+    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2])
+    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2])
+  }
+
+
   pdf(file="heatmaps_samples.pdf")
-  heatmap.2(cor(vstcounts), trace="none", col=hmcol, main="Sample to Sample Correlation (VST)", RowSideColors=cond_colours, margins=c(9.5,9.5))
-  heatmap.2(cor(log2counts), trace="none", col=hmcol, main="Sample to Sample Correlation (Log2)", RowSideColors=cond_colours, margins=c(9.5,9.5))
-  heatmap.2(cor(rawcounts), trace="none", col=hmcol, main="Sample to Sample Correlation (Raw Counts)", RowSideColors=cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(log2counts), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(vstcounts), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(rawcounts), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  dev.off()
+
+  png(file="heatmaps_samples_log.png", width = 7, height = 7, unit = "in", res=200)
+  heatmap.2(cor(log2counts), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  dev.off()
+  png(file="heatmaps_samples_vst.png", width = 7, height = 7, unit = "in", res=200)
+  heatmap.2(cor(vstcounts), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
   dev.off()
 
   if(PAIRED==TRUE){ # If paired - remove batch effect
     print("Plotting sample heatmaps with batch correction as well.")
 
-    log2counts_batch<-limma::removeBatchEffect(log2(normcounts+1), cds$patient) # Save log2 of normalized counts
-    rawcounts_batch<-limma::removeBatchEffect(counts(cds, normalized=FALSE), cds$patient) # Save raw counts
-
-    vsd_batch <- vsd
-    assay(vsd_batch) <- limma::removeBatchEffect(assay(vsd_batch), vsd_batch$patient) # Designed for log transform so we approximate it with vsd (less negative values than with rlog); we might get negative values which we 'round' to
-    vstcounts_batch <- assay(vsd_batch)
+    if(length(condition_design) == 1){
+      hm.log.title = "Sample to Sample Correlation (Log2)\nwith a batch effect removed"
+      hm.vst.title = "Sample to Sample Correlation (VST)\nwith a batch effect removed"
+      hm.raw.title = "Sample to Sample Correlation (Raw Counts)\nwith a batch effect removed"
+    }else{
+      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
+      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
+      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
+    }
 
     pdf(file="heatmaps_samples_batch.pdf")
-    heatmap.2(cor(vstcounts_batch), trace="none", col=hmcol, main="Sample to Sample Correlation (VST)", RowSideColors=cond_colours, margins=c(9.5,9.5))
-    heatmap.2(cor(log2counts_batch), trace="none", col=hmcol, main="Sample to Sample Correlation (Log2)", RowSideColors=cond_colours, margins=c(9.5,9.5))
-    heatmap.2(cor(rawcounts_batch), trace="none", col=hmcol, main="Sample to Sample Correlation (Raw Counts)", RowSideColors=cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(log2counts_batch), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(vstcounts_batch), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(rawcounts_batch), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
     dev.off()
+
+    png(file="heatmaps_samples_log_batch.png", width = 7, height = 7, unit = "in", res=200)
+    heatmap.2(cor(log2counts_batch), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    dev.off()
+    png(file="heatmaps_samples_vst_batch.png", width = 7, height = 7, unit = "in", res=200)
+    heatmap.2(cor(vstcounts_batch), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    dev.off()
+
   }
 
   vstcounts<-vstcounts[apply(vstcounts, 1, max) != 0,]
@@ -394,94 +500,93 @@ run_all <- function(args){
   legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
   dev.off()
 
-  #if(INTERCEPT == T){
-  #pdf(file="sample_to_sample_PCA_batchEffect.pdf")
-  #  # First two components
-  #  par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  #  plot(pca$loadings, col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)")
-  #  text(pca$loadings, as.vector(colnames(mrcounts)), pos=3)
-  #  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  #  # Three components
-  #  par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  #  plot(pca$loadings[,c(1,2)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC2", xlab="PC1")
-  #  text(pca$loadings[,c(1,2)], as.vector(colnames(mrcounts)), pos=3)
-  #  plot(pca$loadings[,c(1,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC1")
-  #  text(pca$loadings[,c(1,3)], as.vector(colnames(mrcounts)), pos=3)
-  #  plot(pca$loadings[,c(2,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC2")
-  #  text(pca$loadings[,c(2,3)], as.vector(colnames(mrcounts)), pos=3)
-  #  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  #dev.off()
-  #}
+
+  library(ggrepel)
+
+  pcaData <- as.data.frame(prcomp(vstcounts)$rotation)
+  pcaData$sample <- rownames(pcaData)
+  pcaData <- merge(pcaData, samples_desc, by="sample")
+
+  if(length(condition_design) == 1){
+    pca.title = "PCA (DESeq2 VST)"
+  }else{
+    pca.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2])
+  }
+
+  pca1 <- ggplot(pcaData, aes(PC1, PC2, color=condition))
+  if(length(unique(pcaData$patient)) == length(pcaData$patient)){
+    pca1 = pca1 + geom_point(size=3)
+  }else{
+    pca1 = pca1 + geom_point(size=3, aes(shape = patient))
+  }
+  pca1 = pca1 + scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black") +
+    xlab("PC1") +
+    ylab("PC2") +
+    theme(plot.title = element_text(face="bold")) +
+    theme(legend.position="bottom") +
+    ggtitle(pca.title)
+
+  ggsave(filename = "sample_to_sample_PCA.png", pca1, units = "in", dpi=200, width = 7, height = 7, device="png")
+  #ggsave(filename = "sample_to_sample_PCA.pdf", pca1, width = 7, height = 7, device="pdf")
 
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(PAIRED == T){
     library("ggplot2")
     library("ggrepel")
 
-    pdf(file="sample_to_sample_PCA_batchEffect.pdf")
-    vsd_batch <- DESeq2::varianceStabilizingTransformation(dds)
-    pcaData <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
-    pcaData$condition <- as.vector(pcaData$condition)
-    percentVar <- round(100 * attr(pcaData, "percentVar"))
-    a<-ggplot(pcaData, aes(PC1, PC2, color=condition, shape=patient)) +
-      geom_point(size=3) +
-      ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData))) +
+    pcaData_batch <- as.data.frame(prcomp(vstcounts_batch)$rotation)
+    pcaData_batch$sample <- rownames(pcaData_batch)
+    pcaData_batch <- merge(pcaData_batch, samples_desc, by="sample")
+
+    if(length(condition_design) == 1){
+      pca_batch.title = "PCA (DESeq2 VST) with a batch effect removed"
+    }else{
+      pca_batch.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2]," with a batch effect removed")
+    }
+
+    pca1_batch <- ggplot(pcaData_batch, aes(PC1, PC2, color=condition))
+    if(length(unique(pcaData_batch$patient)) == length(pcaData_batch$patient)){
+      pca1_batch = pca1_batch + geom_point(size=3)
+    }else{
+      pca1_batch = pca1_batch + geom_point(size=3, aes(shape = patient))
+    }
+    pca1_batch = pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
+      theme_bw() +
+      ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black") +
+      xlab("PC1") +
+      ylab("PC2") +
+      theme(plot.title = element_text(face="bold")) +
+      theme(legend.position="bottom") +
+      ggtitle(pca_batch.title)
+
+    ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batch, units = "in", dpi=200, width = 7, height = 7, device="png")
+
+
+    pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
+    pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
+    percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
+    pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
+      geom_point(size=3, aes(shape = patient)) +
+      scale_color_manual(values = unique(cond_colours), name="") +
+      theme_bw() +
+      ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
       xlab(paste0("PC1: ",percentVar[1],"% variance")) +
       ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-      coord_fixed() +
-      ggtitle("PCA (DESeq2 VST) without a batch effect removed.")
+      theme(plot.title = element_text(face="bold")) +
+      theme(legend.position="bottom") +
+      ggtitle(pca_batch.title)
 
-    assay(vsd_batch) <- limma::removeBatchEffect(assay(vsd_batch), vsd_batch$patient) # Designed for log transform so we approximate it with vsd (less negative values than with rlog); we might get negative values which we 'round' to 0
-    pcaData <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
-    pcaData$condition <- as.vector(pcaData$condition)
-    percentVar <- round(100 * attr(pcaData, "percentVar"))
-    b<-ggplot(pcaData, aes(PC1, PC2, color=condition, shape=patient)) +
-      geom_point(size=3) +
-      ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData))) +
-      xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-      ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-      coord_fixed() +
-      ggtitle("PCA (DESeq2 VST) with a batch effect removed.")
-    print(a)
-    print(b)
-    dev.off()
+    #ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batch, units = "in", dpi=200, width = 7, height = 7, device="png")
+    ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca2_batch, width = 7, height = 7, device="pdf")
 
-    write.table(x = assay(vsd_batch), file = "norm_counts_batch_corrected.tsv", sep = "\t", col.names = NA)
+    write.table(x = assay(vsd_batch), file = "norm_counts_batch.tsv", sep = "\t", col.names = NA)
   }
 
-  pdf(file="contributions_PCA.pdf")
-  plot(pca, type = "l", main="Principal Component Contributions")
-  dev.off()
-
-  # pca2<-prcomp(t(vstcounts),scale=TRUE,center=TRUE)
-  #
-  # pdf(file="sample_to_sample_PCA2.pdf")
-  #   par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  #   plot(pca2$x[,1],pca2$x[,2], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)",ylab="PC2",xlab="PC1")
-  #   text(pca2$x, as.vector(colnames(mrcounts)), pos=3, cex=1)
-  #   plot(pca2$x[,1],pca2$x[,3], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)",ylab="PC3",xlab="PC1")
-  #   text(pca2$x[,1],pca2$x[,3], as.vector(colnames(mrcounts)), pos=3, cex=1)
-  #   plot(pca2$x[,2],pca2$x[,3], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)",ylab="PC3",xlab="PC2")
-  #   text(pca2$x[,2],pca2$x[,3], as.vector(colnames(mrcounts)), pos=3, cex=1)
-  #   legend(-75,-38, levels(conds), fill=cond_colours[levels(conds)], cex=1)
-  # dev.off()
-  #
-  # pdf(file="contributions_PCA.pdf")
-  #   plot(pca2, type = "l", main="Principal Component Contributions")
-  # dev.off()
-
-#  library("plotly")
-#
-#  tab <- as.data.table(pca$loadings[,1:3])
-#  tab[,cond := names(cond_colours)]
-#  tab[,cond_colour := cond_colours]
-#  tab[,sample := samples_desc$name]
-#
-#  #c('#BF382A', '#0C4B8E') maybe better colors
-#  p <- plot_ly(tab, x = ~Comp.1, y = ~Comp.2, z = ~Comp.3, color = ~cond, colors = unique(tab$cond_colour),text = ~paste('Sample:', sample)) %>% add_markers()
-#  htmlwidgets::saveWidget(plotly::as_widget(p),"samples_to_sample_3D_PCA.html")
-
-
+  #pdf(file="contributions_PCA.pdf", width = 7, height = 7)
+  #plot(pca, type = "l", main="Principal Component Contributions")
+  #dev.off()
 
   ####################################################################################################
   # DESeq2 results
@@ -671,14 +776,20 @@ run_all <- function(args){
 
   results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  p = p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
-    theme(plot.title = element_text(hjust = 0.5))
+    theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.pdf", sep=""))
   print(p)
   dev.off()
+
+  png(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.png", sep=""), units = "in",width = 7, height = 7, res = 200)
+  print(p)
+  dev.off()
+
+  #ggsave(paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""), p, width = 7, height = 7, device = svg)
 
   # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
   # p = ggplot(results, aes(baseMean, log2FoldChange)) +
@@ -715,21 +826,28 @@ run_all <- function(args){
   #     theme(plot.title = element_text(hjust = 0.5))
   # dev.off()
 
-  pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.pdf", sep=""))
+
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
-  p <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-           fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
-           palette = c("#B31B21", "#1465AC", "darkgray"),
-           genenames = as.vector(resForPlot$Gene),
-           legend = "top", top = TOP,
-           font.label = c("bold", 11),
-           font.legend = "bold",
-           font.main = "bold",
-           ggtheme = ggplot2::theme_minimal())+
+  ma <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
+                fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                palette = c("#B31B21", "#1465AC", "darkgray"),
+                genenames = as.vector(resForPlot$Gene),
+                legend = "top", top = TOP,
+                font.label = c("bold", 11),
+                font.legend = "bold",
+                font.main = "bold",
+                ggtheme = ggplot2::theme_minimal())+
     theme(plot.title = element_text(hjust = 0.5))
 
-  print(p)
+  pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.pdf", sep=""))
+  print(ma)
   dev.off()
+
+  png(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.png", sep=""), units = "in",width = 7, height = 7, res = 200)
+  print(ma)
+  dev.off()
+
+  #ggsave(paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.svg", sep=""), ma, width = 7, height = 7, device=svg)
 
   TOP<-TOP_BCKP
 
@@ -789,7 +907,7 @@ run_all <- function(args){
   #p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1], "_noIndFilt_ggplot2.pdf", sep=""))
-  p <- p + geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  p <- p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5))
@@ -814,14 +932,14 @@ run_all <- function(args){
   pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt_ggpubr.pdf", sep=""))
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   p <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-           fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
-           palette = c("#B31B21", "#1465AC", "darkgray"),
-           genenames = as.vector(resForPlot$Gene),
-           legend = "top", top = TOP,
-           font.label = c("bold", 11),
-           font.legend = "bold",
-           font.main = "bold",
-           ggtheme = ggplot2::theme_minimal())+
+                fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                palette = c("#B31B21", "#1465AC", "darkgray"),
+                genenames = as.vector(resForPlot$Gene),
+                legend = "top", top = TOP,
+                font.label = c("bold", 11),
+                font.legend = "bold",
+                font.main = "bold",
+                ggtheme = ggplot2::theme_minimal())+
     theme(plot.title = element_text(hjust = 0.5))
   print(p)
   dev.off()
@@ -877,14 +995,20 @@ run_all <- function(args){
   }
 
   if(TOP >  1){
-    pdf(file="heatmap_selected_orderBaseMeanCluster.pdf", onefile=FALSE, height= 2 + (TOP/2))
+    #pdf(file="heatmap_selected_orderBaseMeanCluster.pdf", onefile=FALSE, height= 2 + (TOP/2))
+    pdf(file="heatmap_selected_orderBaseMeanCluster.pdf", onefile=FALSE, height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)", sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
     dev.off()
 
-    pdf(file="heatmap_selected_orderBaseMean.pdf", onefile=FALSE, height= 2 + (TOP/3))
+    png(filename = "heatmap_selected_orderBaseMeanCluster.png", res = 200, units = "in", height= 7, width = 7)
+    pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+    dev.off()
+
+    pdf(file="heatmap_selected_orderBaseMean.pdf", onefile=FALSE, height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=FALSE, show_rownames=TRUE,
-             cluster_cols=FALSE, annotation_col=df, main = paste("Top ", TOP, " significantly DE genes (log2norm)", sep=""))
+             cluster_cols=FALSE, annotation_col=df, main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
     dev.off()
   }
 
@@ -894,16 +1018,16 @@ run_all <- function(args){
 
   #system("for i in heatmap_selected_*; do pdftk $i cat 2-end output tmp.pdf; mv tmp.pdf $i; done") # Cut first empty page from heatmap plot
   tryCatch({
-  if(TOP > 1){
-    # Plot counts for all significant genes
-    pdf(file="all_sig_genes_normCounts.pdf")
-    for(i in 1:length(selectAll)){
-      plotCounts(dds, gene=selectAll[i], intgroup="condition", main=parsedEnsembl[selectAll[i], "gene_name"])
-      mtext(paste0("adj. p-value < ", P_THRESHOLD, " logFC >= ", round(LFC_THRESHOLD,3)))
-      # axis(1, at=seq_along(levels(coldata$condition)), levels(coldata$condition), las=2) # Ugly but works; I am not able to turn off axis() setting in plotCounts function
+    if(TOP > 1){
+      # Plot counts for all significant genes
+      pdf(file="all_sig_genes_normCounts.pdf")
+      for(i in 1:length(selectAll)){
+        plotCounts(dds, gene=selectAll[i], intgroup="condition", main=parsedEnsembl[selectAll[i], "gene_name"])
+        mtext(paste0("adj. p-value < ", P_THRESHOLD, " logFC >= ", round(LFC_THRESHOLD,3)))
+        # axis(1, at=seq_along(levels(coldata$condition)), levels(coldata$condition), las=2) # Ugly but works; I am not able to turn off axis() setting in plotCounts function
+      }
+      dev.off()
     }
-    dev.off()
-  }
   }, error=function(e){})
   # Write all normalized counts
   tmp.table<-as.data.frame(normcounts)
@@ -922,7 +1046,7 @@ run_all <- function(args){
   # edgeR part
   library("edgeR")
 
-  if(counts_type == "featureCounts"){
+  if(counts_type == "feature_count"){
     d<-DGEList(counts=mrcounts, group=coldata$condition) # edgeR DGE object
     d<-calcNormFactors(d) # Calculate normalization factors
 
@@ -952,9 +1076,6 @@ run_all <- function(args){
     d <- DGEList(cts, group=coldata$condition)
     d$offset <- t(t(log(normMat)) + o)
   }
-
-
-
 
   # Design "design = ~0+condition" would be when we compare without a "common" intercept; when we have dependent before and after treatment patients intercept is on place; when
   #   we compare independent groups "~0+" should be on place https://support.bioconductor.org/p/69374/
@@ -1023,12 +1144,35 @@ run_all <- function(args){
   #   output
   wh.rows.tgw<-match(rownames(resultsTbl.tgw), rownames(d$counts))
 
+
+
+  library("limma")
+
+  print(package.version("data.table"))
+  print(package.version("rjson"))
+  print(package.version("R.utils"))
+  print(package.version("gplots"))
+  print(package.version("pheatmap"))
+  print(package.version("ggrepel"))
+  print(package.version("ggplot2"))
+  print(package.version("ggpubr"))
+  print(package.version("cowplot"))
+  print(package.version("ensembldb"))
+  print(package.version("reshape2"))
+  print(package.version("ensembldb"))
+  print(package.version("DESeq2"))
+  print(package.version("edgeR"))
+  print(package.version("limma"))
+
+
+
+  print("##################### ERROR IS HERE #####################")
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
   combResults.tgw<-cbind(resultsTbl.tgw,"tgw.Disp"=d$tagwise.dispersion[wh.rows.tgw],
                          "UpDown"=decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD,
                                                  lfc=LFC_THRESHOLD)[wh.rows.tgw], cpm(d$counts[wh.rows.tgw,]),d$counts[wh.rows.tgw,])
-
+  print("##################### ERROR IS HERE #####################")
   # For all dispersions modify the results with renaming the columns for norm and raw counts
   reformateFinalTable<-function(inputTable, ...){
     colnames(inputTable)[8:((nrow(coldata))+7)]<-paste(colnames(inputTable)[8:((nrow(coldata))+7)], 'normCounts', sep="_")
@@ -1066,16 +1210,31 @@ run_all <- function(args){
 
   points<-c(0, 1, 2, 5, 6, 15, 16, 17, 18)
 
-  cond_colours<-brewer.pal(length(unique(d$samples$group)), "Paired")[d$samples$group]
+  if(length(unique(d$samples$group)) >= 3){
+    num.conds = length(unique(conds))
+  }else{
+    num.conds = 3
+  }
+
+  cond_colours<-brewer.pal(num.conds, "Paired")[d$samples$group]
   names(cond_colours)<-d$samples$group
 
-  pdf(file="MDS_plot.pdf") # Plot biological coefficient of variation. The closer samples are together the more they are similar - should be True for replicates
-  par(mfrow=c(1,1),xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plotMDS(d, main="MDSPlot_BCV_distance", xlab="BCV distance 1", ylab="BCV distance 2", labels = rownames(d$samples),
-          method="bcv", col=cond_colours, pch=points[as.numeric(coldata$patient)], font=2)
-  legend("topleft", legend=levels(d$samples$group), fill=cond_colours[levels(d$samples$group)], ncol=1, cex = 0.75)
-  # legend("topright", legend=rownames(d$samples), pch=points[as.numeric(coldata$patient)], ncol=1, cex = 0.75)
-  dev.off()
+  dfMDS=data.frame(x=plotMDS(d,method="bcv")$x, y=plotMDS(d,method="bcv")$y)
+  dfMDS$sample = rownames(dfMDS)
+  dfMDS$condition = conds
+
+  mds = ggplot(dfMDS, aes(x, y, color=condition)) +
+    geom_point(size = 3) +
+    scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    xlab("BCV distance 1") +
+    ylab("BCV distance 2") +
+    theme(legend.position="bottom") +
+    ggtitle("MDSPlot_BCV_distance") +
+    ggrepel::geom_text_repel(aes(x, y, label = sample), color="black") +
+    theme(plot.title = element_text(face="bold"))
+
+  ggsave("MDS_plot.pdf", mds, units = "in", width = 7, height = 7, dpi = 200)
 
   # See the effect of batch - should be included in the formula
   A<-aveLogCPM(d)
@@ -1084,54 +1243,59 @@ run_all <- function(args){
   logCPM<-cpm(d2, log=TRUE, prior.count=5)
   logCPMc<-removeBatchEffect(logCPM, coldata$patient)
 
-  pdf(file="MDS_plot_batchEffect.pdf")
-  par(mfrow=c(1,2), oma=c(1,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plotMDS(logCPM, col=cond_colours, main="MDS without sample pairing (logCPM)", font=2)
-  #	legend("topleft", levels(d$samples$group), fill=cond_colours[levels(d$samples$group)], cex=0.6, horiz = FALSE)
-  #	plot(1, type="n", axes=F, xlab="", ylab="")
-  #	legend("center", levels(d$samples$group), fill=colors[as.numeric(unique(d$samples$group))], cex=0.6, horiz = FALSE) # This places legend in the middle but set par(mfrow=c(1,3))
-  plotMDS(logCPMc, col=cond_colours, main="MDS with sample pairing (logCPM)", font=2)
-  legend(-1,-0.45, levels(d$samples$group), fill=cond_colours[levels(d$samples$group)], cex=0.6)
-  dev.off()
+  dflogCPM=data.frame(x=plotMDS(logCPM)$x, y=plotMDS(logCPM)$y)
+  dflogCPM$sample = rownames(dflogCPM)
+  dflogCPM$condition = conds
+
+  dflogCPMc=data.frame(x=plotMDS(logCPMc)$x, y=plotMDS(logCPMc)$y)
+  dflogCPMc$sample = rownames(dflogCPMc)
+  dflogCPMc$condition = conds
+
+  mds.logcpm = ggplot(dflogCPM, aes(x, y, color=condition)) +
+    geom_point(size = 3) +
+    scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    xlab("Leading logFC dim 1") +
+    ylab("Leading logFC dim 2") +
+    theme(aspect.ratio=1) +
+    theme(legend.position="bottom") +
+    scale_x_continuous(breaks = scales::pretty_breaks()) +
+    scale_y_continuous(breaks = scales::pretty_breaks()) +
+    ggtitle("MDS (logCPM)\nwithout sample pairing") +
+    ggrepel::geom_text_repel(aes(x, y, label = sample), color="black") +
+    theme(plot.title = element_text(face="bold"))
+
+  mds.logcpmc = ggplot(dflogCPMc, aes(x, y, color=condition)) +
+    geom_point(size = 3) +
+    scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    xlab("Leading logFC dim 1") +
+    ylab("Leading logFC dim 2") +
+    theme(aspect.ratio=1) +
+    theme(legend.position="bottom") +
+    scale_x_continuous(breaks = scales::pretty_breaks()) +
+    scale_y_continuous(breaks = scales::pretty_breaks()) +
+    ggtitle("MDS (logCPM)\nwith sample pairing") +
+    ggrepel::geom_text_repel(aes(x, y, label = sample), color="black") +
+    theme(plot.title = element_text(face="bold"))
+
+  pmds = plot_grid(mds.logcpm, mds.logcpmc, ncol = 2,align = "hv")
+
+  ggsave("MDS_plot_batchEffect.pdf", pmds, units = "in", width = 7, height = 7, dpi=200)
 
   ### Plot expression profiles
-  color<-rainbow(n = ncol(logCPM))
-  density_plot <- density(logCPM[, 1])
-  # Get min and max for the plot
-  minForPlotX<-min(density_plot$x)
-  maxForPlotX<-max(density_plot$x)
-  maxForPlotY<-max(density_plot$y)
+  pdens = ggplot(reshape2::melt(logCPM), aes(value, color=Var2)) +
+    geom_density() +
+    #theme_bw() +
+    scale_color_brewer(palette = "Set3") +
+    ggtitle("Expression profiles") +
+    xlab("Log10 of normalized expression per gene (DESeq2)") +
+    ylab("Density") +
+    theme(plot.title = element_text(face="bold")) +
+    theme(legend.position="bottom") +
+    labs(color = "")
 
-  # TODO Replace with recode() from dplyr
-  for (s in 2:ncol(logCPM)){
-    logcounts <- logCPM[,s]+1
-    density_plot <- density(logcounts)
-    if(min(density_plot$x)<minForPlotX){
-      minForPlotX<-min(density_plot$x)
-    }
-    if(max(density_plot$x)>maxForPlotX){
-      maxForPlotX<-max(density_plot$x)
-    }
-    if(max(density_plot$y)>maxForPlotY){
-      maxForPlotY<-max(density_plot$y)
-    }
-  }
-
-  density_plot <- density(logCPM[, 1])
-
-  pdf(paste0("normalized_gene_expression_check.pdf"), width=10)
-  plot(density_plot, main="Expression profiles", xlim=c(minForPlotX*1.3, maxForPlotX*1.3),
-       ylim=c(0, maxForPlotY*1.3), xlab=paste0("Log10 of normalized expression per gene (DESeq2)"),
-       ylab="Density", col=color[1])
-
-  for (s in 2:ncol(logCPM)){
-    logcounts <- logCPM[,s]
-    density_plot <- density(logcounts)
-    lines(density_plot, col=color[s])
-  }
-
-  legend("topright", legend=colnames(logCPM), col = color, cex = .5, fill=color)
-  dev.off()
+  ggsave("normalized_gene_expression_check.pdf", units = "in", width = 7, height = 7, dpi=200)
 
   # Plot BCV plot
   pdf(file="BCV_plot.pdf")
@@ -1179,6 +1343,44 @@ run_all <- function(args){
 
   graphics.off()
 
+  ### EdgeR volcano
+  ## need genes in rows, P-values, adj. P-values (FDR), logFC and gene labels
+  res.tgwForPlot<-combResults.tgw[c(1:5,7)]
+
+  edge.results = mutate(res.tgwForPlot, sig=ifelse(res.tgwForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  p = ggplot(edge.results, aes(log2FoldChange, -log10(padj))) +
+    geom_point(aes(col=sig), size=0.5) +
+    scale_color_manual(values=c("black", "red"))
+
+  edge.results<-edge.results[order(edge.results$padj, edge.results$pvalue),] # make sure it is correctly ordered
+
+  p = p + geom_text_repel(data=dplyr::filter(edge.results[1:TOP,], padj<P_THRESHOLD), aes(label=gene_name), size=3)+geom_vline(xintercept = 0)+
+    geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+    ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)", sep=""))+
+    theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
+
+  pdf(file=paste("edgeR_volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.pdf", sep=""))
+  print(p)
+  dev.off()
+
+  ###
+  res.tgwForPlot$baseMean = exp(res.tgwForPlot$logCPM)
+  edge.ma <- ggmaplot(res.tgwForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)"),
+                 fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                 palette = c("#B31B21", "#1465AC", "darkgray"),
+                 genenames = as.vector(res.tgwForPlot$gene_name),
+                 legend = "top", top = TOP,
+                 font.label = c("bold", 11),
+                 font.legend = "bold",
+                 font.main = "bold",
+                 ggtheme = ggplot2::theme_minimal())+
+    theme(plot.title = element_text(hjust = 0.5))
+
+  pdf(file=paste("edgeR_MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.pdf", sep=""))
+  print(edge.ma)
+  dev.off()
+
+
   # # Filtering of all results based on set filtering
   # filterFinalTable<-function(inputTable, ...){
   #   inputTable.fil<-inputTable[inputTable$UpDown!=0,] # Keep only DE genes
@@ -1204,6 +1406,7 @@ run_all <- function(args){
   ####################################################################################################
   # Overlap between DESeq2 and edgeR and Venn diagrams - TODO
   # http://www.ats.ucla.edu/stat/r/faq/venn.htm
+
   library("limma")
 
   selectDeseq2<-rownames(res2[(abs(res2$log2FoldChange) >= LFC_THRESHOLD) & (res2$padj < P_THRESHOLD) & !is.na(res2$padj),]) # with LFC cut-off
@@ -1250,18 +1453,30 @@ run_all <- function(args){
 # savehistory(file = "history.Rhistory")
 
 # develop and test 2
-# args <- character(9)
-# args[1] <- "/mnt/ssd/ssd_1/snakemake/stage283_Termiti_peska.qseq_DE/mRNA_DE_RSEM/Termiti_peska.qseq_DE.differential_expresion.config.json"
-# args[2] <- "/mnt/ssd/ssd_1/snakemake/stage283_Termiti_peska.qseq_DE/mRNA_DE_RSEM/complete.RSEM.RData"
-# args[3] <- "/mnt/ssd/ssd_1/snakemake/stage283_Termiti_peska.qseq_DE/mRNA_DE_RSEM/Young_k_vs_Worker/all/"
-# args[4] <- "/mnt/ssd/ssd_3/references/termite/Peska_transcriptome/annot/Peska_transcriptome.sqlite.gz"
-# args[5] <- "/mnt/ssd/ssd_3/references/general/default/annot/biotypes_list_mod.txt"
-# args[6] <- "Young_k_vs_Worker"
-# args[7] <- "RSEM"
-# args[8] <- "termite"
-# args[9] <- "False"
-# args[10] <- "True"
-
+#  STAGE <- "stage408"
+#  ANALYSIS <- "Vacek-Soucek_RNA-Seq.swapped_samples_-_paired"
+#  mRNA_DE <- "mRNA_DE_RSEM"
+#
+#  #complete.feature_count.tsv
+#  #COMPARISON <- c("PCO_H_vs_PCO_T","PT_H_vs_PT_T","PCO_H_vs_PT_H","PCO_T_vs_PT_T","PCO_T_vs_COM_H","PCO_H_vs_COM_H","PT_T_vs_COM_H","PT_H_vs_COM_H")
+#  COMPARISON <- c("Trop_2_BirA_DOX_plus_vs_Trop_2_BirA_DOX_minus")
+#
+#  for(comp in 1:length(COMPARISON)){
+#  args <- character(9)
+#  args[1] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/",ANALYSIS,".differential_expresion.config.json")
+#  args[2] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/complete.RSEM.RData")
+#  args[3] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/",COMPARISON[comp],"/all")
+#  args[4] <- "/mnt/ssd/ssd_3/references/homsap/GRCh38-p10/annot/GRCh38-p10.sqlite.gz"
+#  args[5] <- "/mnt/ssd/ssd_3/references/general/default/annot/biotypes_list_mod.txt"
+#  args[6] <- COMPARISON[comp]
+#  args[7] <- "RSEM"
+#  args[8] <- "homsap"
+#  args[9] <- "True"
+#  args[10] <- "False"
+#
 # # run as Rscript
 args <- commandArgs(trailingOnly = T)
 run_all(args)
+# print(COMPARISON[comp])
+#  }
+#
