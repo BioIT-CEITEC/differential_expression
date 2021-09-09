@@ -1146,32 +1146,22 @@ run_all <- function(args){
 
 
 
-  library("limma")
-
-  print(package.version("data.table"))
-  print(package.version("rjson"))
-  print(package.version("R.utils"))
-  print(package.version("gplots"))
-  print(package.version("pheatmap"))
-  print(package.version("ggrepel"))
-  print(package.version("ggplot2"))
-  print(package.version("ggpubr"))
-  print(package.version("cowplot"))
-  print(package.version("ensembldb"))
-  print(package.version("reshape2"))
-  print(package.version("ensembldb"))
-  print(package.version("DESeq2"))
-  print(package.version("edgeR"))
-  print(package.version("limma"))
-
 
 
   print("##################### ERROR IS HERE #####################")
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
-  combResults.tgw<-cbind(resultsTbl.tgw,"tgw.Disp"=d$tagwise.dispersion[wh.rows.tgw],
-                         "UpDown"=decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD,
-                                                 lfc=LFC_THRESHOLD)[wh.rows.tgw], cpm(d$counts[wh.rows.tgw,]),d$counts[wh.rows.tgw,])
+  resultsTbl.tgw
+  d$tagwise.dispersion[wh.rows.tgw]
+  decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)[wh.rows.tgw]
+  cpm(d$counts[wh.rows.tgw,])
+  d$counts[wh.rows.tgw,]
+
+  combResults.tgw<-cbind(resultsTbl.tgw,
+                         "tgw.Disp"=d$tagwise.dispersion[wh.rows.tgw],
+                         "UpDown"=decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)[wh.rows.tgw],
+                         cpm(d$counts[wh.rows.tgw,]),
+                         d$counts[wh.rows.tgw,])
   print("##################### ERROR IS HERE #####################")
   # For all dispersions modify the results with renaming the columns for norm and raw counts
   reformateFinalTable<-function(inputTable, ...){
