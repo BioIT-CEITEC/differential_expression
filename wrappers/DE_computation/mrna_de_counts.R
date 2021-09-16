@@ -1148,18 +1148,16 @@ run_all <- function(args){
 
 
 
-  print("##################### ERROR IS HERE #####################")
+
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
-  resultsTbl.tgw
-  d$tagwise.dispersion[wh.rows.tgw]
-  decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)[wh.rows.tgw]
-  cpm(d$counts[wh.rows.tgw,])
-  d$counts[wh.rows.tgw,]
+  print("##################### ERROR IS HERE #####################")
 
+  decidetesttab <- decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)
+  decidetesttab <- decidetesttab@.Data[wh.rows.tgw]
   combResults.tgw<-cbind(resultsTbl.tgw,
                          "tgw.Disp"=d$tagwise.dispersion[wh.rows.tgw],
-                         "UpDown"=decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)[wh.rows.tgw],
+                         "UpDown"=decidetesttab,
                          cpm(d$counts[wh.rows.tgw,]),
                          d$counts[wh.rows.tgw,])
   print("##################### ERROR IS HERE #####################")
