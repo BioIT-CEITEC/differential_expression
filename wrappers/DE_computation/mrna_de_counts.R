@@ -40,7 +40,6 @@ run_all <- function(args){
   config_tab <- as.data.table(rjson::fromJSON(file = config_file))
   config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
   config_tab[,tag       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$tag)]
-  #config_tab[,full_name := paste0(config_tab$condition,"_",config_tab$tag)]
   config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
 
 
@@ -1144,14 +1143,8 @@ run_all <- function(args){
   #   output
   wh.rows.tgw<-match(rownames(resultsTbl.tgw), rownames(d$counts))
 
-
-
-
-
-
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
-  print("##################### ERROR IS HERE #####################")
 
   decidetesttab <- decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)
   decidetesttab <- decidetesttab@.Data[wh.rows.tgw]
@@ -1160,7 +1153,7 @@ run_all <- function(args){
                          "UpDown"=decidetesttab,
                          cpm(d$counts[wh.rows.tgw,]),
                          d$counts[wh.rows.tgw,])
-  print("##################### ERROR IS HERE #####################")
+
   # For all dispersions modify the results with renaming the columns for norm and raw counts
   reformateFinalTable<-function(inputTable, ...){
     colnames(inputTable)[8:((nrow(coldata))+7)]<-paste(colnames(inputTable)[8:((nrow(coldata))+7)], 'normCounts', sep="_")
