@@ -3,7 +3,7 @@
 def final_variant_calling_report_input(wildcards):
     input = {}
 
-    if (sample_tab.condition != "").any() or (sample_tab.tag != "").any():
+    if (sample_tab.condition != "").all() and (sample_tab.tag != "").all():
         if config['conditions_to_compare'] == "all":
             condition_list = sorted(sample_tab.condition)
         else:
