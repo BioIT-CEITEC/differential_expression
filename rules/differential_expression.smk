@@ -58,7 +58,7 @@ rule DE_computation:
             organism = config["organism"],
             use_tag_to_pair_samples = config["use_tag_to_pair_samples"],
             ref_from_trans_assembly = config["ref_from_trans_assembly"]
-    log:    "logs/DE_{analysis_type}/{comparison}/{biotype}/{comparison}.{biotype}.DE.log"
+    log:    "logs/all_samples/{comparison}.{biotype}.DE_{analysis_type}.log"
     conda:  "../wrappers/DE_computation/env.yaml"
     script: "../wrappers/DE_computation/script.py"
 
@@ -68,13 +68,13 @@ rule analysis_RSEM_table:
             gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
     output: RSEM = "results/analysis_RSEM_table/complete.RSEM.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"]
-    log:    "logs/RSEM/complete.RSEM.log"
+    log:    "logs/all_samples/complete.RSEM.log"
     conda:  "../wrappers/analysis_RSEM_table/env.yaml"
     script: "../wrappers/analysis_RSEM_table/script.py"
 
 rule analysis_feature_count_table:
     input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
     output: table = "results/analysis_feature_count_table/complete.feature_count.tsv",
-    log:    "logs/feature_count/complete.feature_count.log"
+    log:    "logs/all_samples/complete.feature_count.log"
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
     script: "../wrappers/analysis_feature_count_table/script.py"
