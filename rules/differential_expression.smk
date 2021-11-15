@@ -30,7 +30,7 @@ def final_variant_calling_report_input(wildcards):
     return input
 
 
-rule final_DE_report:
+rule DE_report:
     input: unpack(final_variant_calling_report_input)
     output: html = "results/{analysis_type}_final_report.html"
     params: config = "config.json",
