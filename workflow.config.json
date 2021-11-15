@@ -17,22 +17,28 @@
     ]
   },
   "general_params": [
-    "library_name",
+    "entity_name",
     "sample_name",
     "condition",
     "tag",
     "lib_forward_read_length",
     "lib_reverse_read_length"
   ],
+  "requested_params": [
+    "reference",
+    "ref_from_trans_assembly"
+  ],
   "gui_params" : {
+    "primary": {
+      "conditions_to_compare": {
+        "label": "Conditions to compare",
+        "type": "string",
+        "default": "all"
+      }
+    },
     "detailed": {
       "biotypes": {
         "label": "Biotypes",
-        "type": "string",
-        "default": "all"
-      },
-      "conditions_to_compare": {
-        "label": "Conditions to compare",
         "type": "string",
         "default": "all"
       },
