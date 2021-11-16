@@ -11,6 +11,7 @@ GLOBAL_REF_PATH = "/mnt/references/"
 if not "ref_from_trans_assembly" in config:
     config["ref_from_trans_assembly"] = "F"
 
+
 # setting organism from reference
 f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference.json"),)
 reference_dict = json.load(f)
@@ -27,7 +28,7 @@ reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["re
 sample_tab = pd.DataFrame.from_dict(config["samples"],orient="index")
 
 
-if config["lib_reverse_read_length"] == 0:
+if config["is_paired"] == False:
     read_pair_tags = [""]
     paired = "SE"
 else:
