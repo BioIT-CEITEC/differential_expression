@@ -246,8 +246,12 @@ run_all <- function(args){
     num.conds = 3
   }
 
-  cond_colours<-brewer.pal(num.conds, "Paired")[as.factor(conds)]
+  cond_colours<-brewer.pal(num.conds, "Set1")[as.factor(conds)]
   names(cond_colours)<-conds
+  cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
+  # cond_shapes<-c("\u25CF","\u25B2","\u25FE","\u25C6","\u25BC","\u25BA","\u25C4","\u25C9","\u25C8","\u25A3","\u25E9","\u25EA")[]
+  cond_shapes<-cond_shapes[unique(coldata$patient)]
+  names(cond_shapes)<-unique(coldata$patient)
 
   bp <- ggplot(data.table(sample = colnames(mrcounts), value = colSums(mrcounts), condition=conds), aes(sample,value, fill=condition)) +
     geom_bar(stat = "identity", width = 0.8) +
@@ -422,6 +426,7 @@ run_all <- function(args){
   title_rcs_ncs = plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
 
   ggsave(filename = "pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
+  ggsave(filename = "pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
   ggsave(filename = "pre_post_norm_counts.pdf", title_rcs_ncs, width = 7, height = 7, device = "pdf")
 
   # Heatmaps
@@ -451,6 +456,13 @@ run_all <- function(args){
   heatmap.2(cor(vstcounts), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
   dev.off()
 
+  svg(file="heatmaps_samples_log.svg", width = 7, height = 7)
+  heatmap.2(cor(log2counts), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  dev.off()
+  svg(file="heatmaps_samples_vst.svg", width = 7, height = 7)
+  heatmap.2(cor(vstcounts), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+  dev.off()
+
   if(PAIRED==TRUE){ # If paired - remove batch effect
     print("Plotting sample heatmaps with batch correction as well.")
 
@@ -474,6 +486,13 @@ run_all <- function(args){
     heatmap.2(cor(log2counts_batch), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
     dev.off()
     png(file="heatmaps_samples_vst_batch.png", width = 7, height = 7, unit = "in", res=200)
+    heatmap.2(cor(vstcounts_batch), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    dev.off()
+
+    svg(file="heatmaps_samples_log_batch.svg", width = 7, height = 7)
+    heatmap.2(cor(log2counts_batch), trace="none", col=hmcol, main=hm.log.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
+    dev.off()
+    svg(file="heatmaps_samples_vst_batch.svg", width = 7, height = 7)
     heatmap.2(cor(vstcounts_batch), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=cond_colours, margins=c(9.5,9.5))
     dev.off()
 
@@ -520,14 +539,20 @@ run_all <- function(args){
   }
   pca1 = pca1 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
-    ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black") +
+    scale_shape_manual(values=cond_shapes) +
     xlab("PC1") +
     ylab("PC2") +
     theme(plot.title = element_text(face="bold")) +
     theme(legend.position="bottom") +
     ggtitle(pca.title)
 
-  ggsave(filename = "sample_to_sample_PCA.png", pca1, units = "in", dpi=200, width = 7, height = 7, device="png")
+  pca1S = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData$sample))
+  pca1P = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData$sample))
+
+  ggsave(filename = "sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
+  ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
+  ggsave(filename = "sample_to_sample_PCA.svg", pca1S, width = 7, height = 7, device="svg")
+  ggsave(filename = "sample_to_sample_PCA2.svg", pca1P, width = 7, height = 7, device="svg")
   #ggsave(filename = "sample_to_sample_PCA.pdf", pca1, width = 7, height = 7, device="pdf")
 
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
@@ -553,23 +578,30 @@ run_all <- function(args){
     }
     pca1_batch = pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
       theme_bw() +
-      ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black") +
+      scale_shape_manual(values=cond_shapes) +
       xlab("PC1") +
       ylab("PC2") +
       theme(plot.title = element_text(face="bold")) +
       theme(legend.position="bottom") +
       ggtitle(pca_batch.title)
 
-    ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batch, units = "in", dpi=200, width = 7, height = 7, device="png")
+    pca1_batchS = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData_batch$patient))
+    pca1_batchP = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData_batch$patient))
 
+    ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
+    ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
+
+    ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
+    ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
 
     pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
     pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
     percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
     pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
-      geom_point(size=3, aes(shape = patient)) +
+      geom_point(size=4, aes(shape = patient)) +
       scale_color_manual(values = unique(cond_colours), name="") +
       theme_bw() +
+      scale_shape_manual(values=cond_shapes) +
       ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
       xlab(paste0("PC1: ",percentVar[1],"% variance")) +
       ylab(paste0("PC2: ",percentVar[2],"% variance")) +
@@ -788,6 +820,10 @@ run_all <- function(args){
   print(p)
   dev.off()
 
+  svg(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""),width = 7, height = 7)
+  print(p)
+  dev.off()
+
   #ggsave(paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""), p, width = 7, height = 7, device = svg)
 
   # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
@@ -843,6 +879,10 @@ run_all <- function(args){
   dev.off()
 
   png(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.png", sep=""), units = "in",width = 7, height = 7, res = 200)
+  print(ma)
+  dev.off()
+
+  svg(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggpubr.svg", sep=""),width = 7, height = 7)
   print(ma)
   dev.off()
 
@@ -1005,10 +1045,26 @@ run_all <- function(args){
              main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
     dev.off()
 
-    pdf(file="heatmap_selected_orderBaseMean.pdf", onefile=FALSE, height= 7, width = 7)
-    pheatmap(log2.norm.counts, cluster_rows=FALSE, show_rownames=TRUE,
-             cluster_cols=FALSE, annotation_col=df, main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+    svg(filename = "heatmap_selected_orderBaseMeanCluster.svg", height= 7, width = 7)
+    pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
     dev.off()
+
+    pdf(file="heatmap_selected_orderBaseMean.pdf", onefile=FALSE, height= 7, width = 7)
+    pheatmap(log2.norm.counts, cluster_rows=FALSE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+    dev.off()
+
+    png(filename = "heatmap_selected_orderBaseMean.png", res = 200, units = "in", height= 7, width = 7)
+    pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+    dev.off()
+
+    svg(filename = "heatmap_selected_orderBaseMean.svg", height= 7, width = 7)
+    pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+    dev.off()
+
   }
 
   TOP<-TOP_BCKP
