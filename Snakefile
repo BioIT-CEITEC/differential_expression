@@ -7,11 +7,6 @@ min_version("5.18.0")
 
 GLOBAL_REF_PATH = "/mnt/references/"
 
-
-if not "ref_from_trans_assembly" in config:
-    config["ref_from_trans_assembly"] = "F"
-
-
 # setting organism from reference
 f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference.json"),)
 reference_dict = json.load(f)
@@ -28,12 +23,22 @@ reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["re
 sample_tab = pd.DataFrame.from_dict(config["samples"],orient="index")
 
 
-if config["is_paired"] == False:
-    read_pair_tags = [""]
-    paired = "SE"
-else:
-    read_pair_tags = ["_R1","_R2"]
-    paired = "PE"
+# if config["is_paired"] == False:
+#     read_pair_tags = [""]
+#     paired = "SE"
+# else:
+#     read_pair_tags = ["_R1","_R2"]
+#     paired = "PE"
+
+#set analysis selected analysis types from config and rise exception if no selected
+selected_analysis_types = []
+if config["feature_count"]:
+    selected_analysis_types.append("feature_count")
+if config["RSEM"]:
+    selected_analysis_types.append("RSEM")
+
+# if len(selected_analysis_types) == 0:
+#     !!exception
 
 
 wildcard_constraints:
@@ -48,13 +53,13 @@ wildcard_constraints:
 def input_all(wildcards):
     input = {}
     if config["feature_count"]:
-        input["feature_count"] = "results/feature_count_final_report.html"
+        input["feature_count"] = "DE_feature_count/final_report.html"
     if config["RSEM"]:
-        input["RSEM"] = "results/RSEM_final_report.html"
+        input["RSEM"] = "DE_RSEM/final_report.html"
     return input
 
 rule all:
-    input:  unpack(input_all)
+    input: expand("DE_{analysis_type}/final_report.html",analysis_type=selected_analysis_types)
 
 
 ##### Modules #####

@@ -32,9 +32,8 @@ def final_variant_calling_report_input(wildcards):
 
 rule DE_report:
     input: unpack(final_variant_calling_report_input)
-    output: html = "results/{analysis_type}_final_report.html"
+    output: html = "DE_{analysis_type}/final_report.html"
     params: config = "config.json",
-            paired = paired,
             count_type="{analysis_type}",
             contaminants="all",  ### přidat do configu!
     shell: "touch {output.html}"

@@ -8,7 +8,7 @@
       "qc_reports/{sample}/*/{sample}.*.*"
     ],
     "outputs":[
-      "results/*",
+      "DE_*",
       "logs/*"
     ],
     "report_index": "results/{comparison}/{biotype}/edgeR.tsv",
@@ -18,14 +18,10 @@
   },
   "general_params": [
     "entity_name",
-    "sample_name",
-    "condition",
-    "tag"
+    "sample_name"
   ],
   "requested_params": [
-    "is_paired",
     "reference",
-    "ref_from_trans_assembly",
     "feature_count",
     "RSEM"
   ],
@@ -35,6 +31,11 @@
         "label": "Conditions to compare",
         "type": "string",
         "default": "all"
+      },
+      "custom_batch_effect_grouping": {
+        "label": "Add custom batch effect groups.",
+        "type": "bool",
+        "default": false
       }
     },
     "detailed": {
@@ -57,44 +58,6 @@
         "label": "Fold change threshold",
         "type": "int",
         "default": 2
-      },
-      "use_tag_to_pair_samples": {
-        "label": "Use tag to pair samples",
-        "type": "bool",
-        "default": false
-      },
-      "info": {
-        "label": "Info",
-        "type": "string",
-        "default": "",
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_tag_to_pair_samples": false
-            }
-          }
-        }
-      },
-      "donor": {
-        "label": "Donor",
-        "type": "string",
-        "default": "UNK",
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_tag_to_pair_samples": false
-            }
-          }
-        }
-      },
-      "ref_from_trans_assembly": {
-        "label": "Reference from trans. assembly",
-        "type": "bool",
-        "default": false
       }
     },
     "samples": {
@@ -103,10 +66,24 @@
         "type": "string",
         "default": ""
       },
-      "tag": {
-        "label": "Tag",
+      "replicate": {
+        "label": "Replicate ID",
         "type": "string",
         "default": ""
+      },
+      "batch_group": {
+        "label": "Batch",
+        "type": "string",
+        "default": "",
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "custom_batch_effect_grouping": true
+            }
+          }
+        }
       }
     }
   }
