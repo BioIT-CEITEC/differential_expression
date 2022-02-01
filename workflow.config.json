@@ -2,7 +2,7 @@
   "workflow_description": {
     "name":"differential_expression",
     "version": 1.0,
-    "label":"Differential expression",
+    "label":"Differential expression VB2",
     "type":"differential_expression",
     "inputs":[
       "qc_reports/{sample}/*/{sample}.*.*"
@@ -32,13 +32,42 @@
         "type": "string",
         "default": "all"
       },
-      "custom_batch_effect_grouping": {
-        "label": "Add custom batch effect groups.",
+      "paired_replicates": {
+        "label": "Replicates are paired by ID.",
         "type": "bool",
         "default": false
+      },
+      "use_custom_batch_effect_grouping": {
+        "label": "Use custom batch effect groups in batch.",
+        "type": "bool",
+        "default": false,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "paired_replicates": true
+            }
+          }
+        }
       }
     },
     "detailed": {
+      "keep_not_compared_samples_for_normalization": {
+        "label": "Keep not compared samples for normalization.",
+        "type": "bool",
+        "default": true
+      },
+      "normalize_data_per_comparison": {
+        "label": "Normalize read counts to all samples OR per comparison.",
+        "type": "bool",
+        "default": false
+      },
+      "remove_genes_with_mean_read_count_threshold": {
+        "label": "Remove genes with mean raw read count bellow.",
+        "type": "int",
+        "default": 0
+      },
       "biotypes": {
         "label": "Biotypes",
         "type": "string",
@@ -49,15 +78,15 @@
         "type": "string",
         "default": "0.05"
       },
-      "named_in_viz": {
-        "label": "Named in viz",
-        "type": "int",
-        "default": 20
-      },
       "fold_change_threshold": {
         "label": "Fold change threshold",
         "type": "int",
         "default": 2
+      },
+      "named_in_viz": {
+        "label": "Named in viz",
+        "type": "int",
+        "default": 20
       }
     },
     "samples": {
@@ -80,7 +109,7 @@
             "operand": "equal",
             "negation": false,
             "values": {
-              "custom_batch_effect_grouping": true
+              "use_custom_batch_effect_grouping": true
             }
           }
         }

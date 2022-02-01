@@ -11,19 +11,27 @@ f = open(log_filename, 'a+')
 f.write("\n##\n## RULE: DE_computation \n##\n")
 f.close()
 
-command = " Rscript "+os.path.abspath(os.path.dirname(__file__))+"/mrna_de_counts.R "+\
-            snakemake.input.cfg_tab+ " " +\
-            snakemake.input.expression_tab+ " " +\
-            os.path.dirname(snakemake.output.table)+ " " +\
-            snakemake.input.sqlite+ " " +\
-            snakemake.input.biotype_groups+ " " +\
-            snakemake.wildcards.comparison+ " " +\
-            snakemake.params.count_type + " " +\
+
+snakemake.params.sample_tab.to_csv(snakemake.params.experiment_design, index=False,sep="\t")
+
+
+command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/mrna_de_counts.R "+\
+            snakemake.params.experiment_design + " " +\
+            snakemake.input.count_tab + " " +\
+            ",".join(snakemake.params.comparison_dir_list) + " " +\
+            ",".join(snakemake.params.condition_list) + " " +\
             snakemake.params.organism + " " +\
-            str(snakemake.params.use_tag_to_pair_samples) + " " +\
-            str(snakemake.params.ref_from_trans_assembly) +\
-            " >> " + log_filename + " 2>&1 "
+            snakemake.wildcards.analysis_type + " " +\
+            str(snakemake.params.paired_replicates) + " " +\
+            str(snakemake.params.normalize_data_per_comparison) + " " +\
+            str(snakemake.params.use_custom_batch_effect_grouping) + " " +\
+            str(snakemake.params.pvalue_for_viz) + " " +\
+            str(snakemake.params.fold_change_threshold) + " " +\
+            str(snakemake.params.named_in_viz) + " " +\
+            str(snakemake.params.remove_genes_with_mean_read_count_threshold) +\
+            " >> " + log_filename + " 2>&1"
 
 f = open(log_filename, 'a+')
 f.write("## COMMAND: "+command+"\n")
-shell(command)
+f.write("## args <- c(\"" + "\",\"".join(command.split(" ")[2:-3]) + "\")\n")
+# shell(command)

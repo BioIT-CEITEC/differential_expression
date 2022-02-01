@@ -1,80 +1,57 @@
 
+rule creat_RSEM_table:
+    input:  RSEM = expand("qc_reports/{sample}/RSEM/{sample}.genes.results",sample=sample_tab.sample_name),
+            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+    output: RSEM = "DE_RSEM/complete_RSEM_table.RData"
+    log:    "logs/DE/create_RSEM_table.log"
+    conda:  "../wrappers/analysis_RSEM_table/env.yaml"
+    script: "../wrappers/analysis_RSEM_table/script.py"
 
-def final_variant_calling_report_input(wildcards):
-    input = {}
+rule creat_feature_count_table:
+    input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_feature_count/complete_feature_count_table.tsv",
+    log:    "logs/DE/create_feature_count_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
 
-    if (sample_tab.condition != "").all() and (sample_tab.tag != "").all():
-        if config['conditions_to_compare'] == "all":
-            condition_list = sorted(sample_tab.condition)
-        else:
-            condition_list = config['conditions_to_compare'].split(",")
-
-        comparison_dir_list = list()
-        for condition1 in condition_list:
-            if ':' in condition1:
-                conditions = condition1.split(":")
-                comparison_dir_list.append(conditions[0] + "_vs_" + conditions[1])
-            else:
-                for condition2 in condition_list[condition_list.index(condition1):]:
-                    if ':' not in condition2 and condition2 != condition1:
-                        comparison_dir_list.append(condition2 + "_vs_" + condition1)
-
-        biotype_dir_list = config['biotypes'].split(",")
-
-        input['tsv'] = expand("results/DE_{{analysis_type}}/{comparison}/{biotype}/edgeR.tsv", comparison=comparison_dir_list, biotype=biotype_dir_list)
-
-        if config["ref_from_trans_assembly"] != False:
-            input['trans_ids_map'] = expand("{ref_dir}/annot/{ref}.transdecoder_ids_map", ref_dir=reference_directory,ref=config["reference"])[0]
+def count_tab_input(wildcards):
+    if wildcards.analysis_type == "RSEM":
+        suffix = "RData"
     else:
-        raise ValueError("There is no conditions or tag for samples!")
-    return input
+        suffix = "tsv"
+
+    return expand("DE_{analysis_type}/complete_{analysis_type}_table.{suffix}",analysis_type=wildcards.analysis_type,suffix=suffix)[0]
+
+rule DE_computation:
+    input:  count_tab = count_tab_input,
+    output: table = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list),
+
+    params: organism = config["organism"],
+            paired_replicates = config["paired_replicates"],
+            sample_tab = sample_tab,
+            experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
+            comparison_dir_list = comparison_dir_list,
+            normalize_data_per_comparison = config["normalize_data_per_comparison"],
+            use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
+            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
+            pvalue_for_viz= config["pvalue_for_viz"],
+            fold_change_threshold= config["fold_change_threshold"],
+            named_in_viz= config["named_in_viz"]
+    log:    "logs/DE/DE_{analysis_type}.log"
+    conda:  "../wrappers/DE_computation/env.yaml"
+    script: "../wrappers/DE_computation/script.py"
+
+
+# def final_variant_calling_report_input(wildcards):
+#     input = {}
+#     input['tsv'] = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list)
+#     return input
 
 
 rule DE_report:
-    input: unpack(final_variant_calling_report_input)
+    input: tsv = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list)
     output: html = "DE_{analysis_type}/final_report.html"
     params: config = "config.json",
             count_type="{analysis_type}",
             contaminants="all",  ### přidat do configu!
     shell: "touch {output.html}"
-
-def DE_computation_input(wildcards):
-    input={}
-    input["cfg_tab"] = "config.json"
-    input["biotype_groups"] = os.path.join(GLOBAL_REF_PATH,"general/default/annot/biotypes_list_mod.txt")
-    input["sqlite"] = expand("{ref_dir}/annot/{ref}.sqlite.gz",ref_dir=reference_directory,ref=config["reference"])[0]
-    if wildcards.analysis_type == "feature_count":
-        input["expression_tab"] = "results/analysis_{analysis_type}_table/complete.{analysis_type}.tsv"
-    if wildcards.analysis_type == "RSEM":
-        input["expression_tab"] = "results/analysis_{analysis_type}_table/complete.{analysis_type}.RData"
-    return input
-
-
-rule DE_computation:
-    input: unpack(DE_computation_input)
-    output: table = "results/DE_{analysis_type}/{comparison}/{biotype}/edgeR.tsv",
-    params: count_type="{analysis_type}",
-            organism = config["organism"],
-            use_tag_to_pair_samples = config["use_tag_to_pair_samples"],
-            ref_from_trans_assembly = config["ref_from_trans_assembly"]
-    log:    "logs/all_samples/{comparison}.{biotype}.DE_{analysis_type}.log"
-    conda:  "../wrappers/DE_computation/env.yaml"
-    script: "../wrappers/DE_computation/script.py"
-
-
-rule analysis_RSEM_table:
-    input:  RSEM = expand("qc_reports/{sample}/RSEM/{sample}.genes.results",sample=sample_tab.sample_name),
-            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
-    output: RSEM = "results/analysis_RSEM_table/complete.RSEM.RData"
-    params: ref_from_trans_assembly = config["ref_from_trans_assembly"]
-    log:    "logs/all_samples/complete.RSEM.log"
-    conda:  "../wrappers/analysis_RSEM_table/env.yaml"
-    script: "../wrappers/analysis_RSEM_table/script.py"
-
-rule analysis_feature_count_table:
-    input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
-    output: table = "results/analysis_feature_count_table/complete.feature_count.tsv",
-    log:    "logs/all_samples/complete.feature_count.log"
-    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
-    script: "../wrappers/analysis_feature_count_table/script.py"
-

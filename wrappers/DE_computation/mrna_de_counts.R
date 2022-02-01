@@ -22,25 +22,37 @@
 
 #devtools::install_github("r-lib/later")
 
+
+
 library(data.table)
+
+
+# develop and test 2
+setwd("/mnt/ssd/ssd_1/sequia/220131__differential_expression__2127/")
+args <- c("DE_feature_count/DE_experiment_design.tsv","DE_feature_count/complete_feature_count_table.tsv","WT_odd_vs_WT_even,WT_odd_vs_Mut_odd,WT_even_vs_Mut_odd,WT_even_vs_Mut_even","homo_sapiens","feature_count","True","False","False","0.05","2","20","0")
+
+
 
 run_all <- function(args){
 
-  config_file <- args[1]
+  experiment_design_file <- args[1]
   counts_file <- args[2]
-  OUTPUT_DIR <- args[3]
-  sqlite_path <- args[4]
-  biotypes_file <- args[5]
-  condsToCompare <- rev(strsplit(args[6],"_vs_")[[1]])
-  counts_type <- args[7]
-  organism <- args[8]
-  use_tag_to_pair_samples <- as.logical(toupper(args[9]))
-  ref_from_trans_assembly <- as.logical(toupper(args[10]))
+  output_dir <- dirname(experiment_design_file)
+  all_conds_to_compare <- strsplit(args[3],split = ",")[[1]]
+  organism <- args[4]
+  analysis_type <- args[5]
+  paired_samples <- as.logical(toupper(args[6]))
+  normalize_data_per_comparison <- as.logical(toupper(args[7]))
+  use_custom_batch_effect_grouping <- as.logical(toupper(args[8]))
+  p_value_threshold <- as.numeric(args[9])
+  lfc_threshold <- log(as.numeric(args[10]),2)
+  TOP <- as.integer(args[11])
+  remove_genes_with_mean_read_count_threshold <- as.integer(args[12])
+  INTERCEPT<-TRUE
+  
+  experiment_design <- fread(experiment_design_file)
 
-  config_tab <- as.data.table(rjson::fromJSON(file = config_file))
-  config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
-  config_tab[,tag       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$tag)]
-  config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
+
 
 
   #remove unused samples
@@ -91,9 +103,9 @@ run_all <- function(args){
   }
 
   #set other parameters
-  P_THRESHOLD <- as.numeric(config_tab$pvalue_for_viz[1])
+  p_value_threshold <- as.numeric(config_tab$pvalue_for_viz[1])
   FOLD_CHANGE <- as.numeric(config_tab$fold_change_threshold[1])
-  LFC_THRESHOLD <- log(FOLD_CHANGE, 2)
+  lfc_threshold <- log(FOLD_CHANGE, 2)
   TOP <- as.integer(config_tab$named_in_viz[1]) # How many top DE genes should be plotted
 
   #is intercept
@@ -144,7 +156,7 @@ run_all <- function(args){
   ####################################################################################################
   #start analysis create output dir and read
 
-  dir.create(OUTPUT_DIR, recursive = T,showWarnings = F)
+  dir.create(output_dir, recursive = T,showWarnings = F)
   conds<-factor(c(samples_desc$condition), levels=c(unique(samples_desc$condition)))
   coldata <- as.data.frame(samples_desc[,list(condition = factor(condition,levels = unique(condition)),patient = as.factor(patient))])
   rownames(coldata) <- samples_desc$sample
@@ -236,7 +248,7 @@ run_all <- function(args){
   #print(mrcounts)
 
   ####################################################################################################
-  setwd(OUTPUT_DIR)
+  setwd(output_dir)
 
   ####################################################################################################
   library(ggplot2)
@@ -638,7 +650,7 @@ run_all <- function(args){
   }
 
   res<-res[order(res$padj, res$pvalue),]
-  sig<-rownames(res[(abs(res$log2FoldChange) >= LFC_THRESHOLD) & (res$padj < P_THRESHOLD) & !is.na(res$padj),]) # Extract significant results
+  sig<-rownames(res[(abs(res$log2FoldChange) >= lfc_threshold) & (res$padj < p_value_threshold) & !is.na(res$padj),]) # Extract significant results
 
   res2<-as.data.frame(res)
   res2<-merge(res2, parsedEnsembl, by="row.names", all.x = T) # Add Ensembl genotype info
@@ -660,19 +672,19 @@ run_all <- function(args){
 
   # Quick check of DE genes
   tmpMatrix<-matrix(ncol=1, nrow=5)
-  rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(LFC_THRESHOLD, 2), " (up)", sep=""), paste("LFC <= ", -(round(LFC_THRESHOLD, 2)), " (down)", sep=""), "not de", "low counts")
+  rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
   tmpMatrix[1,1]<-nrow(res2)
-  tmpMatrix[2,1]<-nrow(res2[res2$log2FoldChange >= (LFC_THRESHOLD) & (res2$padj < P_THRESHOLD) & !is.na(res2$padj),])
-  tmpMatrix[3,1]<-nrow(res2[(res2$log2FoldChange <= (-LFC_THRESHOLD)) & (res2$padj < P_THRESHOLD) & !is.na(res2$padj),])
-  #tmpMatrix[4,1]<-nrow(res2[(res2$log2FoldChange > (-LFC_THRESHOLD) & (res2$log2FoldChange < (LFC_THRESHOLD))) & !is.na(res2$padj),])
-  tmpMatrix[4,1]<-nrow(res2[((res2$padj >= P_THRESHOLD) | ((res2$log2FoldChange > (-LFC_THRESHOLD)) & (res2$log2FoldChange < (LFC_THRESHOLD)))) & !is.na(res2$padj),])
+  tmpMatrix[2,1]<-nrow(res2[res2$log2FoldChange >= (lfc_threshold) & (res2$padj < p_value_threshold) & !is.na(res2$padj),])
+  tmpMatrix[3,1]<-nrow(res2[(res2$log2FoldChange <= (-lfc_threshold)) & (res2$padj < p_value_threshold) & !is.na(res2$padj),])
+  #tmpMatrix[4,1]<-nrow(res2[(res2$log2FoldChange > (-lfc_threshold) & (res2$log2FoldChange < (lfc_threshold))) & !is.na(res2$padj),])
+  tmpMatrix[4,1]<-nrow(res2[((res2$padj >= p_value_threshold) | ((res2$log2FoldChange > (-lfc_threshold)) & (res2$log2FoldChange < (lfc_threshold)))) & !is.na(res2$padj),])
   tmpMatrix[5,1]<-sum(is.na(res2$padj))
   tmpMatrix[,1]<-paste(": ", tmpMatrix[,1], ", ",round(tmpMatrix[,1]/((tmpMatrix[1,1]/100)), 1), "%", sep="")
 
   sink("DESeq2_de_genes_check.txt")
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " Without LogFC Cut-off", sep=""))
-  summary(res, alpha=P_THRESHOLD)
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " and LogFC >= ", round(LFC_THRESHOLD, 2), sep=""))
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off", sep=""))
+  summary(res, alpha=p_value_threshold)
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), sep=""))
   print(noquote(tmpMatrix))
   print("Used tests")
   write.table(mcols(res)$description, col.names=F, row.names=F)
@@ -698,7 +710,7 @@ run_all <- function(args){
   }
 
   resNoFil<-resNoFil[order(resNoFil$padj, resNoFil$pvalue),]
-  sigNoFil<-rownames(resNoFil[(abs(resNoFil$log2FoldChange) >= LFC_THRESHOLD) & (resNoFil$padj < P_THRESHOLD) & !is.na(resNoFil$padj),])
+  sigNoFil<-rownames(resNoFil[(abs(resNoFil$log2FoldChange) >= lfc_threshold) & (resNoFil$padj < p_value_threshold) & !is.na(resNoFil$padj),])
 
   resNoFil2<-as.data.frame(resNoFil)
   resNoFil2<-merge(resNoFil2, parsedEnsembl, by="row.names", all.x = T)
@@ -720,19 +732,19 @@ run_all <- function(args){
 
   # Quick check of DE genes
   tmpMatrix<-matrix(ncol=1, nrow=5)
-  rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(LFC_THRESHOLD, 2), " (up)", sep=""), paste("LFC <= ", -(round(LFC_THRESHOLD, 2)), " (down)", sep=""), "not de", "low counts")
+  rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
   tmpMatrix[1,1]<-nrow(resNoFil2)
-  tmpMatrix[2,1]<-nrow(resNoFil2[resNoFil2$log2FoldChange >= (LFC_THRESHOLD) & (resNoFil2$padj < P_THRESHOLD) & !is.na(resNoFil2$padj),])
-  tmpMatrix[3,1]<-nrow(resNoFil2[(resNoFil2$log2FoldChange <= (-LFC_THRESHOLD)) & (resNoFil2$padj < P_THRESHOLD) & !is.na(resNoFil2$padj),])
-  #tmpMatrix[4,1]<-nrow(resNoFil2[(resNoFil2$log2FoldChange > (-LFC_THRESHOLD) & (resNoFil2$log2FoldChange < (LFC_THRESHOLD))) & !is.na(resNoFil2$padj),])
-  tmpMatrix[4,1]<-nrow(resNoFil2[((resNoFil2$padj >= P_THRESHOLD) | ((resNoFil2$log2FoldChange > (-LFC_THRESHOLD)) & (resNoFil2$log2FoldChange < (LFC_THRESHOLD)))) & !is.na(resNoFil2$padj),])
+  tmpMatrix[2,1]<-nrow(resNoFil2[resNoFil2$log2FoldChange >= (lfc_threshold) & (resNoFil2$padj < p_value_threshold) & !is.na(resNoFil2$padj),])
+  tmpMatrix[3,1]<-nrow(resNoFil2[(resNoFil2$log2FoldChange <= (-lfc_threshold)) & (resNoFil2$padj < p_value_threshold) & !is.na(resNoFil2$padj),])
+  #tmpMatrix[4,1]<-nrow(resNoFil2[(resNoFil2$log2FoldChange > (-lfc_threshold) & (resNoFil2$log2FoldChange < (lfc_threshold))) & !is.na(resNoFil2$padj),])
+  tmpMatrix[4,1]<-nrow(resNoFil2[((resNoFil2$padj >= p_value_threshold) | ((resNoFil2$log2FoldChange > (-lfc_threshold)) & (resNoFil2$log2FoldChange < (lfc_threshold)))) & !is.na(resNoFil2$padj),])
   tmpMatrix[5,1]<-0 # Turned off by turning off cooks cutoff and ind. filtering
   tmpMatrix[,1]<-paste(": ", tmpMatrix[,1], ", ",round(tmpMatrix[,1]/((tmpMatrix[1,1]/100)), 1), "%", sep="")
 
   sink("DESeq2_de_genes_check_noIndFilt.txt")
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " Without LogFC Cut-off", sep=""))
-  summary(resNoFil, alpha=P_THRESHOLD)
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " and LogFC >= ", round(LFC_THRESHOLD, 2), sep=""))
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off", sep=""))
+  summary(resNoFil, alpha=p_value_threshold)
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), sep=""))
   print(noquote(tmpMatrix))
   print("Used tests")
   write.table(mcols(resNoFil)$description, col.names=F, row.names=F)
@@ -778,17 +790,17 @@ run_all <- function(args){
          labels=parsedEnsembl[rownames(res)[RANGE], "gene_name"], cex=0.3, pos=3)
     legend("bottomleft", condsToCompare[1], cex=0.5)
     legend("bottomright", condsToCompare[2], cex=0.5)
-    abline(h=-log(P_THRESHOLD, 10), col="red", lty=2)
-    abline(v=c(-LFC_THRESHOLD, LFC_THRESHOLD), col="darkblue", lty=2)
+    abline(h=-log(p_value_threshold, 10), col="red", lty=2)
+    abline(v=c(-lfc_threshold, lfc_threshold), col="darkblue", lty=2)
     dev.off()
 
   }
 
   pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],".pdf", sep=""))
   par(xpd=TRUE) # Allow labels to be out of the frame
-  DESeq2::plotMA(res, alpha=P_THRESHOLD, main=paste("MA plot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""),
+  DESeq2::plotMA(res, alpha=p_value_threshold, main=paste("MA plot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""),
                  ylim=c(-max(abs(res$log2FoldChange), na.rm=T), max(abs(res$log2FoldChange), na.rm=T)))
-  abline(h=c(-LFC_THRESHOLD, LFC_THRESHOLD), col="darkblue", lty=2)
+  abline(h=c(-lfc_threshold, lfc_threshold), col="darkblue", lty=2)
   text(res[1:TOP,]$baseMean, res[1:TOP,]$log2FoldChange, labels=parsedEnsembl[rownames(res)[1:TOP], "gene_name"], cex=0.3, pos=3)
   legend("bottomright", condsToCompare[1], cex=0.5)
   legend("topright", condsToCompare[2], cex=0.5)
@@ -800,15 +812,15 @@ run_all <- function(args){
   library("ggrepel")
   resForPlot<-as.data.frame(res)
   resForPlot$Gene<-parsedEnsembl[rownames(res), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig"))
   p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
 
   results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-    geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+  p = p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+    geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
 
@@ -832,9 +844,9 @@ run_all <- function(args){
   #   scale_color_manual(values=c("black", "red"))
   # p
   # results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
-  # p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
-  # p+geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-  #   geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+  # p+geom_text(data=filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)
+  # p+geom_text_repel(data=filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  #   geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue")+
   #   ggtitle(paste("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
   #   theme(plot.title = element_text(hjust = 0.5))
 
@@ -850,7 +862,7 @@ run_all <- function(args){
   # pdf(file=paste("MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_ggpubr.pdf", sep=""))
   # #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   #   ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-  #            fdr = P_THRESHOLD, fc = 0, size = 0.4,
+  #            fdr = p_value_threshold, fc = 0, size = 0.4,
   #            palette = c("#B31B21", "#1465AC", "darkgray"),
   #            genenames = as.vector(resForPlot$Gene),
   #            legend = "top", top = TOP,
@@ -864,7 +876,7 @@ run_all <- function(args){
 
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   ma <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-                fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                fdr = p_value_threshold, fc = FOLD_CHANGE, size = 0.4,
                 palette = c("#B31B21", "#1465AC", "darkgray"),
                 genenames = as.vector(resForPlot$Gene),
                 legend = "top", top = TOP,
@@ -917,15 +929,15 @@ run_all <- function(args){
          labels=parsedEnsembl[rownames(resNoFil)[RANGE], "gene_name"], cex=0.3, pos=3)
     legend("bottomleft", condsToCompare[1], cex=0.5)
     legend("bottomright", condsToCompare[2], cex=0.5)
-    abline(h=-log(P_THRESHOLD, 10), col="red", lty=2)
-    abline(v=c(-LFC_THRESHOLD, LFC_THRESHOLD), col="darkblue", lty=2)
+    abline(h=-log(p_value_threshold, 10), col="red", lty=2)
+    abline(v=c(-lfc_threshold, lfc_threshold), col="darkblue", lty=2)
     dev.off()
 
     pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.pdf", sep=""))
     par(xpd=TRUE) # Allow labels to be out of the frame
-    DESeq2::plotMA(res, alpha=P_THRESHOLD, main=paste("MA plot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""),
+    DESeq2::plotMA(res, alpha=p_value_threshold, main=paste("MA plot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""),
                    ylim=c(-max(abs(res$log2FoldChange), na.rm=T), max(abs(res$log2FoldChange), na.rm=T)))
-    abline(h=c(-LFC_THRESHOLD, LFC_THRESHOLD), col="darkblue", lty=2)
+    abline(h=c(-lfc_threshold, lfc_threshold), col="darkblue", lty=2)
     text(resNoFil[1:TOP,]$baseMean, resNoFil[1:TOP,]$log2FoldChange, labels=parsedEnsembl[rownames(res)[1:TOP], "gene_name"], cex=0.3, pos=3)
     legend("bottomright", condsToCompare[1], cex=0.5)
     legend("topright", condsToCompare[2], cex=0.5)
@@ -937,17 +949,17 @@ run_all <- function(args){
   # library(ggrepel)
   resForPlot<-as.data.frame(resNoFil)
   resForPlot$Gene<-parsedEnsembl[rownames(resNoFil), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig"))
   p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
   #p
   results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
-  #p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
+  #p+geom_text(data=filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1], "_noIndFilt_ggplot2.pdf", sep=""))
-  p <- p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-    geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+  p <- p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+    geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5))
   print(p)
@@ -959,9 +971,9 @@ run_all <- function(args){
   #   scale_color_manual(values=c("black", "red"))
   # p
   # results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
-  # p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
-  # p+geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-  #   geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+  # p+geom_text(data=filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)
+  # p+geom_text_repel(data=filter(results[1:TOP,], padj<p_value_threshold), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  #   geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue")+
   #   ggtitle(paste("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
   #   theme(plot.title = element_text(hjust = 0.5))
 
@@ -971,7 +983,7 @@ run_all <- function(args){
   pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt_ggpubr.pdf", sep=""))
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   p <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-                fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                fdr = p_value_threshold, fc = FOLD_CHANGE, size = 0.4,
                 palette = c("#B31B21", "#1465AC", "darkgray"),
                 genenames = as.vector(resForPlot$Gene),
                 legend = "top", top = TOP,
@@ -989,7 +1001,7 @@ run_all <- function(args){
   library("pheatmap")
 
   res_tmp<-res[order(res$padj, res$pvalue, -abs(res$log2FoldChange), -(res$baseMean)),]
-  select<-rownames(res_tmp[(abs(res_tmp$log2FoldChange) >= LFC_THRESHOLD) & (res_tmp$padj < P_THRESHOLD) & !is.na(res_tmp$padj),])
+  select<-rownames(res_tmp[(abs(res_tmp$log2FoldChange) >= lfc_threshold) & (res_tmp$padj < p_value_threshold) & !is.na(res_tmp$padj),])
   selectAll<-select
 
   if(length(select)>TOP){
@@ -1078,7 +1090,7 @@ run_all <- function(args){
       pdf(file="all_sig_genes_normCounts.pdf")
       for(i in 1:length(selectAll)){
         plotCounts(dds, gene=selectAll[i], intgroup="condition", main=parsedEnsembl[selectAll[i], "gene_name"])
-        mtext(paste0("adj. p-value < ", P_THRESHOLD, " logFC >= ", round(LFC_THRESHOLD,3)))
+        mtext(paste0("adj. p-value < ", p_value_threshold, " logFC >= ", round(lfc_threshold,3)))
         # axis(1, at=seq_along(levels(coldata$condition)), levels(coldata$condition), las=2) # Ugly but works; I am not able to turn off axis() setting in plotCounts function
       }
       dev.off()
@@ -1202,7 +1214,7 @@ run_all <- function(args){
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
 
-  decidetesttab <- decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)
+  decidetesttab <- decideTestsDGE(lrt_tgw,adjust.method="BH", p.value=p_value_threshold, lfc=lfc_threshold)
   decidetesttab <- decidetesttab@.Data[wh.rows.tgw]
   combResults.tgw<-cbind(resultsTbl.tgw,
                          "tgw.Disp"=d$tagwise.dispersion[wh.rows.tgw],
@@ -1345,17 +1357,17 @@ run_all <- function(args){
   dev.off()
 
   sink("edgeR_de_genes_check.txt")
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " Without LogFC Cut-off", sep=""))
-  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=P_THRESHOLD)
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off", sep=""))
+  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=p_value_threshold)
   summary(dt)
-  print(paste("Number of DE Genes With adj.pval < ", P_THRESHOLD, " and LogFC >= ", round(LFC_THRESHOLD, 2), sep=""))
-  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=P_THRESHOLD, lfc=LFC_THRESHOLD)
+  print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), sep=""))
+  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=p_value_threshold, lfc=lfc_threshold)
   summary(dt)
   sink()
 
 
   # Store names of DE genes with FDR filtration
-  de.genes.tgw<-rownames(resultsTbl.tgw)[resultsTbl.tgw$FDR<=P_THRESHOLD]
+  de.genes.tgw<-rownames(resultsTbl.tgw)[resultsTbl.tgw$FDR<=p_value_threshold]
 
   TOP_BCKP<-TOP
 
@@ -1370,7 +1382,7 @@ run_all <- function(args){
 
     pdf(file=paste0("edgeR_MAplot_", condsToCompare[2], "_vs_", condsToCompare[1], ".pdf"))
     plotSmear(lrt_tgw, de.tags=de.genes.tgw, main="FC Plot With Tagwise Dispersion")
-    abline(h=c(-LFC_THRESHOLD, LFC_THRESHOLD), col="dodgerblue")
+    abline(h=c(-lfc_threshold, lfc_threshold), col="dodgerblue")
     text(x=gene.labels$logCPM, y=gene.labels$log2FoldChange, labels=gene.labels$gene_name, cex=0.7, pos=1)
     dev.off()
   }
@@ -1384,15 +1396,15 @@ run_all <- function(args){
   ## need genes in rows, P-values, adj. P-values (FDR), logFC and gene labels
   res.tgwForPlot<-combResults.tgw[c(1:5,7)]
 
-  edge.results = mutate(res.tgwForPlot, sig=ifelse(res.tgwForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  edge.results = mutate(res.tgwForPlot, sig=ifelse(res.tgwForPlot$padj<p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig"))
   p = ggplot(edge.results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
 
   edge.results<-edge.results[order(edge.results$padj, edge.results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=dplyr::filter(edge.results[1:TOP,], padj<P_THRESHOLD), aes(label=gene_name), size=3)+geom_vline(xintercept = 0)+
-    geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
+  p = p + geom_text_repel(data=dplyr::filter(edge.results[1:TOP,], padj<p_value_threshold), aes(label=gene_name), size=3)+geom_vline(xintercept = 0)+
+    geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)", sep=""))+
     theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
 
@@ -1403,7 +1415,7 @@ run_all <- function(args){
   ###
   res.tgwForPlot$baseMean = exp(res.tgwForPlot$logCPM)
   edge.ma <- ggmaplot(res.tgwForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)"),
-                 fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
+                 fdr = p_value_threshold, fc = FOLD_CHANGE, size = 0.4,
                  palette = c("#B31B21", "#1465AC", "darkgray"),
                  genenames = as.vector(res.tgwForPlot$gene_name),
                  legend = "top", top = TOP,
@@ -1421,8 +1433,8 @@ run_all <- function(args){
   # # Filtering of all results based on set filtering
   # filterFinalTable<-function(inputTable, ...){
   #   inputTable.fil<-inputTable[inputTable$UpDown!=0,] # Keep only DE genes
-  #   inputTable.fil<-inputTable.fil[inputTable.fil$FDR<=P_THRESHOLD,] # Filter by FDR value
-  #   inputTable.fil<-inputTable.fil[abs(inputTable.fil$logFC)>=LFC_THRESHOLD,] # Filter by logFC value
+  #   inputTable.fil<-inputTable.fil[inputTable.fil$FDR<=p_value_threshold,] # Filter by FDR value
+  #   inputTable.fil<-inputTable.fil[abs(inputTable.fil$logFC)>=lfc_threshold,] # Filter by logFC value
   #   inputTable.fil<-inputTable.fil[order(-inputTable.fil$UpDown,inputTable.fil$FDR,
   #                                        -inputTable.fil$logFC),] # ,-inputTable.fil$logCPM),]
   #   if (nrow(inputTable.fil)==0){inputTable.fil[1,1]<-"No results"}
@@ -1446,10 +1458,10 @@ run_all <- function(args){
 
   library("limma")
 
-  selectDeseq2<-rownames(res2[(abs(res2$log2FoldChange) >= LFC_THRESHOLD) & (res2$padj < P_THRESHOLD) & !is.na(res2$padj),]) # with LFC cut-off
-  selectEdger<-rownames(combResults.tgw[(abs(combResults.tgw$log2FoldChange) >= LFC_THRESHOLD) & (combResults.tgw$padj < P_THRESHOLD) & !is.na(combResults.tgw$padj),]) # with LFC cut-off
-  #selectDeseq2<-rownames(res2[(res2$padj < P_THRESHOLD) & !is.na(res2$padj),]) # without LFC cut-off
-  #selectEdger<-rownames(combResults.tgw[(combResults.tgw$padj < P_THRESHOLD) & !is.na(combResults.tgw$padj),]) # without LFC cut-off
+  selectDeseq2<-rownames(res2[(abs(res2$log2FoldChange) >= lfc_threshold) & (res2$padj < p_value_threshold) & !is.na(res2$padj),]) # with LFC cut-off
+  selectEdger<-rownames(combResults.tgw[(abs(combResults.tgw$log2FoldChange) >= lfc_threshold) & (combResults.tgw$padj < p_value_threshold) & !is.na(combResults.tgw$padj),]) # with LFC cut-off
+  #selectDeseq2<-rownames(res2[(res2$padj < p_value_threshold) & !is.na(res2$padj),]) # without LFC cut-off
+  #selectEdger<-rownames(combResults.tgw[(combResults.tgw$padj < p_value_threshold) & !is.na(combResults.tgw$padj),]) # without LFC cut-off
 
   vennTable<-matrix(ncol=2, nrow=length(unique(c(selectDeseq2, selectEdger))))
   rownames(vennTable)<-unique(c(selectDeseq2, selectEdger))
@@ -1463,7 +1475,7 @@ run_all <- function(args){
   pdf(file="overlap_DESeq2_edgeR_venn.pdf")
   par(oma=c(0,0,1,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
   vennDiagram(vennTable2, counts.col="black", main=paste("Overlap Between DESeq2 and edgeR results \nwith LogFC >= ",
-                                                         round(LFC_THRESHOLD, 2), " and adj.pval ", P_THRESHOLD, sep=""))
+                                                         round(lfc_threshold, 2), " and adj.pval ", p_value_threshold, sep=""))
   dev.off()
 
   # Add gene names
@@ -1489,31 +1501,12 @@ run_all <- function(args){
 # save.image(file = "image.RData")
 # savehistory(file = "history.Rhistory")
 
-# develop and test 2
-#  STAGE <- "stage408"
-#  ANALYSIS <- "Vacek-Soucek_RNA-Seq.swapped_samples_-_paired"
-#  mRNA_DE <- "mRNA_DE_RSEM"
-#
-#  #complete.feature_count.tsv
-#  #COMPARISON <- c("PCO_H_vs_PCO_T","PT_H_vs_PT_T","PCO_H_vs_PT_H","PCO_T_vs_PT_T","PCO_T_vs_COM_H","PCO_H_vs_COM_H","PT_T_vs_COM_H","PT_H_vs_COM_H")
-#  COMPARISON <- c("Trop_2_BirA_DOX_plus_vs_Trop_2_BirA_DOX_minus")
-#
-#  for(comp in 1:length(COMPARISON)){
-#  args <- character(9)
-#  args[1] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/",ANALYSIS,".differential_expresion.config.json")
-#  args[2] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/complete.RSEM.RData")
-#  args[3] <- paste0("/mnt/ssd/ssd_1/snakemake/",STAGE,"_",ANALYSIS,"/",mRNA_DE,"/",COMPARISON[comp],"/all")
-#  args[4] <- "/mnt/ssd/ssd_3/references/homsap/GRCh38-p10/annot/GRCh38-p10.sqlite.gz"
-#  args[5] <- "/mnt/ssd/ssd_3/references/general/default/annot/biotypes_list_mod.txt"
-#  args[6] <- COMPARISON[comp]
-#  args[7] <- "RSEM"
-#  args[8] <- "homsap"
-#  args[9] <- "True"
-#  args[10] <- "False"
+
+
 #
 # # run as Rscript
-args <- commandArgs(trailingOnly = T)
-run_all(args)
+# args <- commandArgs(trailingOnly = T)
+# run_all(args)
 # print(COMPARISON[comp])
 #  }
 #

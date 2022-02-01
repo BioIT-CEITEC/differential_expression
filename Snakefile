@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import json
 from snakemake.utils import min_version
+import re
 
 min_version("5.18.0")
 
@@ -22,13 +23,39 @@ reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["re
 #
 sample_tab = pd.DataFrame.from_dict(config["samples"],orient="index")
 
+if (sample_tab.condition == "").all():
+    raise ValueError("There are no conditions set for samples!")
 
-# if config["is_paired"] == False:
-#     read_pair_tags = [""]
-#     paired = "SE"
-# else:
-#     read_pair_tags = ["_R1","_R2"]
-#     paired = "PE"
+
+def get_comparison_dir_list(condition_list):
+    comparison_dir_list = list()
+    for condition1 in condition_list:
+        if ':' in condition1:
+            conditions = condition1.split(":")
+            comparison_dir_list.append(conditions[0] + "_vs_" + conditions[1])
+        else:
+            for condition2 in condition_list[condition_list.index(condition1):]:
+                if ':' not in condition2 and condition2 != condition1:
+                    comparison_dir_list.append(condition1 + "_vs_" + condition2)
+    return comparison_dir_list
+
+
+## create list of conditions
+if config['conditions_to_compare'] == "all":
+    condition_list = sorted(sample_tab.condition)
+    condition_list_first = [condition for condition in condition_list if
+                            re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+    condition_list_second = [condition for condition in condition_list if
+                             not re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+    condition_list = condition_list_first + condition_list_second
+    comparison_dir_list = get_comparison_dir_list(condition_list)
+else:
+    comparison_dir_list = get_comparison_dir_list(config['conditions_to_compare'].split(","))
+    condition_list = set(config['conditions_to_compare'].replace(':',',').split(","))
+    if not config['keep_not_compared_samples_for_normalization']:
+        sample_tab = sample_tab[sample_tab['condition'].isin(condition_list)]
+
+
 
 #set analysis selected analysis types from config and rise exception if no selected
 selected_analysis_types = []
@@ -37,8 +64,8 @@ if config["feature_count"]:
 if config["RSEM"]:
     selected_analysis_types.append("RSEM")
 
-# if len(selected_analysis_types) == 0:
-#     !!exception
+if len(selected_analysis_types) == 0:
+    raise ValueError("There was no RSEM or feature_count used in previous analysis!")
 
 
 wildcard_constraints:
