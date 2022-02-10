@@ -36,7 +36,7 @@ rule DE_report:
     params: config = "config.json",
             paired = paired,
             count_type="{analysis_type}",
-            contaminants="all",  ### přidat do configu!
+            contaminants="all",
     shell: "touch {output.html}"
 
 def DE_computation_input(wildcards):
