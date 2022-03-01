@@ -499,94 +499,152 @@ run_all <- function(args){
   }
 
   vstcounts<-vstcounts[apply(vstcounts, 1, max) != 0,]
-  pca<-princomp(vstcounts)
-
-  pdf(file="sample_to_sample_PCA.pdf")
-  # First two components
-  par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plot(pca$loadings, col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)")
-  text(pca$loadings, as.vector(colnames(mrcounts)), pos=3)
-  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  # Three components
-  par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plot(pca$loadings[,c(1,2)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC2", xlab="PC1")
-  text(pca$loadings[,c(1,2)], as.vector(colnames(mrcounts)), pos=3)
-  plot(pca$loadings[,c(1,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC1")
-  text(pca$loadings[,c(1,3)], as.vector(colnames(mrcounts)), pos=3)
-  plot(pca$loadings[,c(2,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC2")
-  text(pca$loadings[,c(2,3)], as.vector(colnames(mrcounts)), pos=3)
-  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  dev.off()
+  # pca<-princomp(vstcounts)
+  #
+  # pdf(file="sample_to_sample_PCA.pdf")
+  # # First two components
+  # par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
+  # plot(pca$loadings, col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)")
+  # text(pca$loadings, as.vector(colnames(mrcounts)), pos=3)
+  # legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
+  # # Three components
+  # par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
+  # plot(pca$loadings[,c(1,2)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC2", xlab="PC1")
+  # text(pca$loadings[,c(1,2)], as.vector(colnames(mrcounts)), pos=3)
+  # plot(pca$loadings[,c(1,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC1")
+  # text(pca$loadings[,c(1,3)], as.vector(colnames(mrcounts)), pos=3)
+  # plot(pca$loadings[,c(2,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC2")
+  # text(pca$loadings[,c(2,3)], as.vector(colnames(mrcounts)), pos=3)
+  # legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
+  # dev.off()
 
 
   library(ggrepel)
 
-  pcaData <- as.data.frame(prcomp(vstcounts)$rotation)
-  pcaData$sample <- rownames(pcaData)
-  pcaData <- merge(pcaData, samples_desc, by="sample")
-
   if(length(condition_design) == 1){
-    pca.title = "PCA (DESeq2 VST)"
+    pca.title <- "PCA (DESeq2 VST)"
   }else{
-    pca.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2])
+    pca.title <- paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2])
   }
 
-  pca1 <- ggplot(pcaData, aes(PC1, PC2, color=condition))
-  if(length(unique(pcaData$patient)) == length(pcaData$patient)){
-    pca1 = pca1 + geom_point(size=3)
+  # calculate the variance for each gene
+  rv <- rowVars(vstcounts)
+  # select the ntop genes by variance
+  select <- order(rv, decreasing=TRUE)[seq_len(min(500, length(rv)))]
+  # perform a PCA on the data in vstcounts for the selected genes
+  pcaData <- prcomp(t((vstcounts)[select,]))
+  # the contribution to the total variance for each component
+  percentVar <- pcaData$sdev^2 / sum( pcaData$sdev^2 )
+  # assembly the data for the plot
+  pca <- data.frame(PC1=pcaData$x[,1], PC2=pcaData$x[,2], PC3=pcaData$x[,3])
+  pca$sample <- rownames(pca)
+  pca <- merge(samples_desc, pca, by="sample")
+
+  pca1 <- ggplot(pca, aes(PC1, PC2, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca1 <- pca1 + geom_point(size=4, alpha=0.7)
   }else{
-    pca1 = pca1 + geom_point(size=3, aes(shape = patient))
+    pca1 <- pca1 + geom_point(size=4, alpha=0.7, aes(shape = patient))
   }
-  pca1 = pca1 + scale_color_manual(values = unique(cond_colours), name="") +
+  pca1 <- pca1 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
     scale_shape_manual(values=cond_shapes) +
-    xlab("PC1") +
-    ylab("PC2") +
+    xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+    ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
     theme(legend.position="bottom") +
     ggtitle(pca.title)
 
-  pca1S = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData$sample))
-  pca1P = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData$sample))
+  pca1S <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca$sample))
+  pca1P <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca$sample))
 
   ggsave(filename = "sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "sample_to_sample_PCA.svg", pca1S, width = 7, height = 7, device="svg")
   ggsave(filename = "sample_to_sample_PCA2.svg", pca1P, width = 7, height = 7, device="svg")
-  #ggsave(filename = "sample_to_sample_PCA.pdf", pca1, width = 7, height = 7, device="pdf")
+  ggsave(filename = "sample_to_sample_PCA.pdf", pca1S, width = 7, height = 7, device=cairo_pdf)
+  ggsave(filename = "sample_to_sample_PCA2.pdf", pca1P, width = 7, height = 7, device=cairo_pdf)
+
+  pca1v3 <- ggplot(pca, aes(PC1, PC3, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.7)
+  }else{
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.7, aes(shape = patient))
+  }
+  pca1v3 <- pca1v3 + scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    scale_shape_manual(values=cond_shapes) +
+    xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+    ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+    theme(plot.title = element_text(face="bold")) +
+    ggrepel::geom_text_repel(aes(PC1, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    theme(legend.position = "none") +
+    ggtitle(pca.title)
+
+  pca2v3 <- ggplot(pca, aes(PC2, PC3, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.7)
+  }else{
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.7, aes(shape = patient))
+  }
+  pca2v3 <- pca2v3 + scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    scale_shape_manual(values=cond_shapes) +
+    xlab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+    ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+    theme(plot.title = element_text(face="bold")) +
+    ggrepel::geom_text_repel(aes(PC2, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    theme(legend.position = "none") +
+    ggtitle(pca.title)
+
+  pca1v2 <- pca1P + theme(legend.position = "none")
+
+  pcax3 <- plot_grid(pca1v2, pca1v3, pca2v3, nrow = 1)
+  pcax3.legend <- get_legend( pca1 )
+  pcax3wlegend <- plot_grid(pcax3, pcax3.legend, ncol = 1, rel_heights = c(1, .1))
+  ggsave(filename = "sample_to_sample_PCAx3.pdf", pcax3wlegend, width = 7, height = 7, device=cairo_pdf)
 
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(PAIRED == T){
     library("ggplot2")
     library("ggrepel")
 
-    pcaData_batch <- as.data.frame(prcomp(vstcounts_batch)$rotation)
-    pcaData_batch$sample <- rownames(pcaData_batch)
-    pcaData_batch <- merge(pcaData_batch, samples_desc, by="sample")
-
     if(length(condition_design) == 1){
-      pca_batch.title = "PCA (DESeq2 VST) with a batch effect removed"
+      pca_batch.title <- "PCA (DESeq2 VST) with a batch effect removed"
     }else{
-      pca_batch.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2]," with a batch effect removed")
+      pca_batch.title <- paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2]," with a batch effect removed")
     }
 
-    pca1_batch <- ggplot(pcaData_batch, aes(PC1, PC2, color=condition))
-    if(length(unique(pcaData_batch$patient)) == length(pcaData_batch$patient)){
-      pca1_batch = pca1_batch + geom_point(size=3)
+    # calculate the variance for each gene
+    rv_batch <- rowVars(vstcounts_batch)
+    # select the ntop genes by variance
+    select_batch <- order(rv_batch, decreasing=TRUE)[seq_len(min(500, length(rv_batch)))]
+    # perform a PCA on the data in vstcounts_batch for the selected genes
+    pcaData_batch <- prcomp(t((vstcounts_batch)[select_batch,]))
+    # the contribution to the total variance for each component
+    percentVar_batch <- pcaData_batch$sdev^2 / sum( pcaData_batch$sdev^2 )
+    # assembly the data for the plot
+    pca_batch <- data.frame(PC1=pcaData_batch$x[,1], PC2=pcaData_batch$x[,2], PC3=pcaData_batch$x[,3])
+    pca_batch$sample <- rownames(pca_batch)
+    pca_batch <- merge(samples_desc, pca_batch, by="sample")
+
+    pca1_batch <- ggplot(pca_batch, aes(PC1, PC2, color=condition))
+    if(length(unique(pca_batch$patient)) == length(pca_batch$patient)){
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.7)
     }else{
-      pca1_batch = pca1_batch + geom_point(size=3, aes(shape = patient))
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.7, aes(shape = patient))
     }
-    pca1_batch = pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
+    pca1_batch <- pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
       theme_bw() +
       scale_shape_manual(values=cond_shapes) +
-      xlab("PC1") +
-      ylab("PC2") +
+      xlab(paste0("PC1: ",round(percentVar_batch[1] * 100),"% variance")) +
+      ylab(paste0("PC2: ",round(percentVar_batch[2] * 100),"% variance")) +
       theme(plot.title = element_text(face="bold")) +
       theme(legend.position="bottom") +
       ggtitle(pca_batch.title)
 
-    pca1_batchS = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData_batch$patient))
-    pca1_batchP = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData_batch$patient))
+    pca1_batchS <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca_batch$patient))
+    pca1_batchP <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca_batch$patient))
 
     ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -594,23 +652,25 @@ run_all <- function(args){
     ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
     ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
 
-    pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
-    pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
-    percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
-    pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
-      geom_point(size=4, aes(shape = patient)) +
-      scale_color_manual(values = unique(cond_colours), name="") +
-      theme_bw() +
-      scale_shape_manual(values=cond_shapes) +
-      ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
-      xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-      ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-      theme(plot.title = element_text(face="bold")) +
-      theme(legend.position="bottom") +
-      ggtitle(pca_batch.title)
+    ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device=cairo_pdf)
+    ggsave(filename = "sample_to_sample_PCA_batch2.pdf", pca1_batchP, width = 7, height = 7, device=cairo_pdf)
+
+    #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
+    #pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
+    #percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
+    #pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
+    #  geom_point(size=4, aes(shape = patient)) +
+    #  scale_color_manual(values = unique(cond_colours), name="") +
+    #  theme_bw() +
+    #  ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
+    #  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    #  ylab(paste0("PC2: ",percentVar[2],"% variance")) +
+    #  theme(plot.title = element_text(face="bold")) +
+    #  theme(legend.position="bottom") +
+    #  ggtitle(pca_batch.title)
 
     #ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batch, units = "in", dpi=200, width = 7, height = 7, device="png")
-    ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca2_batch, width = 7, height = 7, device="pdf")
+    #ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca2_batch, width = 7, height = 7, device="pdf")
 
     write.table(x = assay(vsd_batch), file = "norm_counts_batch.tsv", sep = "\t", col.names = NA)
   }
