@@ -248,10 +248,10 @@ run_all <- function(args){
 
   cond_colours<-brewer.pal(num.conds, "Set1")[as.factor(conds)]
   names(cond_colours)<-conds
-  cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
-  # cond_shapes<-c("\u25CF","\u25B2","\u25FE","\u25C6","\u25BC","\u25BA","\u25C4","\u25C9","\u25C8","\u25A3","\u25E9","\u25EA")[]
-  cond_shapes<-cond_shapes[unique(coldata$patient)]
-  names(cond_shapes)<-unique(coldata$patient)
+  # cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
+  # # cond_shapes<-c("\u25CF","\u25B2","\u25FE","\u25C6","\u25BC","\u25BA","\u25C4","\u25C9","\u25C8","\u25A3","\u25E9","\u25EA")[]
+  # cond_shapes<-cond_shapes[unique(coldata$patient)]
+  # names(cond_shapes)<-unique(coldata$patient)
 
   bp <- ggplot(data.table(sample = colnames(mrcounts), value = colSums(mrcounts), condition=conds), aes(sample,value, fill=condition)) +
     geom_bar(stat = "identity", width = 0.8) +
@@ -542,13 +542,14 @@ run_all <- function(args){
 
   pca1 <- ggplot(pca, aes(PC1, PC2, color=condition))
   if(length(unique(pca$patient)) == length(pca$patient)){
-    pca1 <- pca1 + geom_point(size=4, alpha=0.7)
+    pca1 <- pca1 + geom_point(size=4, alpha=0.8)
   }else{
-    pca1 <- pca1 + geom_point(size=4, alpha=0.7, aes(shape = patient))
+    pca1 <- pca1 + geom_point(size=4, alpha=0.8, aes(shape = patient))
   }
   pca1 <- pca1 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
-    scale_shape_manual(values=cond_shapes) +
+    #scale_shape_manual(values=cond_shapes) +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
     xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
@@ -567,13 +568,13 @@ run_all <- function(args){
 
   pca1v3 <- ggplot(pca, aes(PC1, PC3, color=condition))
   if(length(unique(pca$patient)) == length(pca$patient)){
-    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.7)
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.8)
   }else{
-    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.7, aes(shape = patient))
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.8, aes(shape = patient))
   }
   pca1v3 <- pca1v3 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
-    scale_shape_manual(values=cond_shapes) +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
     xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
@@ -583,13 +584,13 @@ run_all <- function(args){
 
   pca2v3 <- ggplot(pca, aes(PC2, PC3, color=condition))
   if(length(unique(pca$patient)) == length(pca$patient)){
-    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.7)
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.8)
   }else{
-    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.7, aes(shape = patient))
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.8, aes(shape = patient))
   }
   pca2v3 <- pca2v3 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
-    scale_shape_manual(values=cond_shapes) +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
     xlab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
     ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
@@ -630,13 +631,13 @@ run_all <- function(args){
 
     pca1_batch <- ggplot(pca_batch, aes(PC1, PC2, color=condition))
     if(length(unique(pca_batch$patient)) == length(pca_batch$patient)){
-      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.7)
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.8)
     }else{
-      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.7, aes(shape = patient))
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.8, aes(shape = patient))
     }
     pca1_batch <- pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
       theme_bw() +
-      scale_shape_manual(values=cond_shapes) +
+      scale_shape_manual(values=1:length(unique(pca$patient))) +
       xlab(paste0("PC1: ",round(percentVar_batch[1] * 100),"% variance")) +
       ylab(paste0("PC2: ",round(percentVar_batch[2] * 100),"% variance")) +
       theme(plot.title = element_text(face="bold")) +
