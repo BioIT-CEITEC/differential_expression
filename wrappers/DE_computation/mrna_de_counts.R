@@ -22,9 +22,10 @@
 
 #devtools::install_github("r-lib/later")
 
-library(data.table)
+
 
 run_all <- function(args){
+  library(data.table)
 
   config_file <- args[1]
   counts_file <- args[2]
