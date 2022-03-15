@@ -46,11 +46,12 @@ run_all <- function(args){
   #remove unused samples
   condition_design <- config_tab$conditions_to_compare[1]
   if(condition_design != "all"){
-    condition_design <- strsplit(condition_design,",")[[1]]
-    condition_design <- condition_design[which(grepl(condsToCompare[1],condition_design) & grepl(condsToCompare[2],condition_design))]
-    condition_design <- strsplit(condition_design,":")[[1]]
+    #condition_design <- strsplit(condition_design,",")[[1]]
+    #condition_design <- condition_design[which(grepl(condsToCompare[1],condition_design) & grepl(condsToCompare[2],condition_design))]
+    #condition_design <- strsplit(condition_design,":")[[1]]
     setkey(config_tab,condition)
-    config_tab <- config_tab[condition_design,]
+    #config_tab <- config_tab[condition_design,]
+    config_tab <- config_tab[condsToCompare,]
   } else {
     setorder(config_tab,condition)
   }
