@@ -405,10 +405,10 @@ run_all <- function(args){
   rcs_ncs = plot_grid(rcs,ncs,nrow=2)
 
   # now add the title
-  if(length(condition_design) == 1){
+  if(condition_design == "all"){
     count.title = "All samples"
   }else{
-    count.title = paste0(condition_design[1]," vs ",condition_design[2])
+    count.title = paste0(condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -434,14 +434,14 @@ run_all <- function(args){
   # Heatmaps
   library("gplots")
 
-  if(length(condition_design) == 1){
+  if(condition_design == "all"){
     hm.log.title = "Sample to Sample Correlation (Log2)"
     hm.vst.title = "Sample to Sample Correlation (VST)"
     hm.raw.title = "Sample to Sample Correlation (Raw Counts)"
   }else{
-    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2])
-    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2])
-    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2])
+    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -468,14 +468,14 @@ run_all <- function(args){
   if(PAIRED==TRUE){ # If paired - remove batch effect
     print("Plotting sample heatmaps with batch correction as well.")
 
-    if(length(condition_design) == 1){
+    if(condition_design == "all"){
       hm.log.title = "Sample to Sample Correlation (Log2)\nwith a batch effect removed"
       hm.vst.title = "Sample to Sample Correlation (VST)\nwith a batch effect removed"
       hm.raw.title = "Sample to Sample Correlation (Raw Counts)\nwith a batch effect removed"
     }else{
-      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
-      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
-      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
+      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
     }
 
     pdf(file="heatmaps_samples_batch.pdf")
@@ -523,10 +523,10 @@ run_all <- function(args){
 
   library(ggrepel)
 
-  if(length(condition_design) == 1){
+  if(condition_design == "all"){
     pca.title <- "PCA (DESeq2 VST)"
   }else{
-    pca.title <- paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2])
+    pca.title <- paste0("PCA (DESeq2 VST) ",condsToCompare[2]," vs ",condsToCompare[1])
   }
 
   # calculate the variance for each gene
@@ -615,7 +615,7 @@ run_all <- function(args){
     if(length(condition_design) == 1){
       pca_batch.title <- "PCA (DESeq2 VST) with a batch effect removed"
     }else{
-      pca_batch.title <- paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2]," with a batch effect removed")
+      pca_batch.title <- paste0("PCA (DESeq2 VST) ",condsToCompare[2]," vs ",condsToCompare[1]," with a batch effect removed")
     }
 
     # calculate the variance for each gene
