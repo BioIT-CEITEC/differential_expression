@@ -607,6 +607,19 @@ run_all <- function(args){
   pcax3wlegend <- plot_grid(pcax3, pcax3.legend, ncol = 1, rel_heights = c(1, .1))
   ggsave(filename = "sample_to_sample_PCAx3.pdf", pcax3wlegend, width = 7, height = 7, device=cairo_pdf)
 
+  ## 3D PCA plot
+  library(plotly)
+  library(htmlwidgets)
+
+  pca3D <- plot_ly(pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors=unique(cond_colours))
+  pca3D <- pca3D %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar[1] * 100,2),"% variance")),
+                                         yaxis = list(title = paste0("PC2: ",round(percentVar[2] * 100,2),"% variance")),
+                                         zaxis = list(title = paste0("PC3: ",round(percentVar[3] * 100,2),"% variance"))))
+  pca3D <- pca3D %>% add_trace(text = pca$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+  pca3D <- pca3D %>% layout( title = list(text=pca.title, size = 10))
+
+  htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D.html")
+
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(PAIRED == T){
     library("ggplot2")
@@ -657,6 +670,17 @@ run_all <- function(args){
 
     ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device=cairo_pdf)
     ggsave(filename = "sample_to_sample_PCA_batch2.pdf", pca1_batchP, width = 7, height = 7, device=cairo_pdf)
+
+    ## 3D PCA plot
+    pca3D_batch <- plot_ly(pca_batch, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors=unique(cond_colours))
+    pca3D_batch <- pca3D_batch %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar_batch[1] * 100,2),"% variance")),
+                                         yaxis = list(title = paste0("PC2: ",round(percentVar_batch[2] * 100,2),"% variance")),
+                                         zaxis = list(title = paste0("PC3: ",round(percentVar_batch[3] * 100,2),"% variance"))))
+    pca3D <- pca3D %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+    pca3D <- pca3D %>% layout( title = list(text=pca_batch.title, size = 10))
+
+    htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D_batch.html")
+
 
     #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
     #pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
@@ -863,67 +887,34 @@ run_all <- function(args){
   library("ggrepel")
   resForPlot<-as.data.frame(res)
   resForPlot$Gene<-parsedEnsembl[rownames(res), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
-  p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
+  results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  volkan <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
 
   results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  volkan <- volkan + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.pdf", sep=""))
-  print(p)
+  print(volkan)
   dev.off()
 
   png(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.png", sep=""), units = "in",width = 7, height = 7, res = 200)
-  print(p)
+  print(volkan)
   dev.off()
 
   svg(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""),width = 7, height = 7)
-  print(p)
+  print(volkan)
   dev.off()
 
   #ggsave(paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""), p, width = 7, height = 7, device = svg)
 
-  # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
-  # p = ggplot(results, aes(baseMean, log2FoldChange)) +
-  #   geom_point(aes(col=sig), size=0.5) +
-  #   scale_color_manual(values=c("black", "red"))
-  # p
-  # results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
-  # p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
-  # p+geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-  #   geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
-  #   ggtitle(paste("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
-  #   theme(plot.title = element_text(hjust = 0.5))
-
   # Great MA plot http://www.sthda.com/english/rpkgs/ggpubr/reference/ggmaplot.html
   library("ggpubr")
-
-  # Add custom gene names to MA plot - there is a issue with coloring of the extra genes which are being considered as DE (and colored) even if they are not
-  # selectedGenes<-which(resForPlot$Gene %in% c("IL2RA", "IL2RB"))
-  # resForPlot[selectedGenes, "padj"] <- 0
-  #
-  # TOP<-TOP+length(selectedGenes)
-  #
-  # pdf(file=paste("MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_ggpubr.pdf", sep=""))
-  # #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
-  #   ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-  #            fdr = P_THRESHOLD, fc = 0, size = 0.4,
-  #            palette = c("#B31B21", "#1465AC", "darkgray"),
-  #            genenames = as.vector(resForPlot$Gene),
-  #            legend = "top", top = TOP,
-  #            font.label = c("bold", 11),
-  #            font.legend = "bold",
-  #            font.main = "bold",
-  #            ggtheme = ggplot2::theme_minimal())+
-  #     theme(plot.title = element_text(hjust = 0.5))
-  # dev.off()
-
 
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   ma <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
@@ -1000,8 +991,8 @@ run_all <- function(args){
   # library(ggrepel)
   resForPlot<-as.data.frame(resNoFil)
   resForPlot$Gene<-parsedEnsembl[rownames(resNoFil), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
-  p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
+  results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  volkan_nofilt <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
   #p
@@ -1009,11 +1000,11 @@ run_all <- function(args){
   #p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1], "_noIndFilt_ggplot2.pdf", sep=""))
-  p <- p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  volkan_nofilt <- volkan_nofilt + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5))
-  print(p)
+  print(volkan_nofilt)
   dev.off()
 
   # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
@@ -1033,7 +1024,7 @@ run_all <- function(args){
 
   pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt_ggpubr.pdf", sep=""))
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
-  p <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
+  ma_nofilt <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
                 fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
                 palette = c("#B31B21", "#1465AC", "darkgray"),
                 genenames = as.vector(resForPlot$Gene),
@@ -1043,7 +1034,7 @@ run_all <- function(args){
                 font.main = "bold",
                 ggtheme = ggplot2::theme_minimal())+
     theme(plot.title = element_text(hjust = 0.5))
-  print(p)
+  print(ma_nofilt)
   dev.off()
 
   TOP<-TOP_BCKP
