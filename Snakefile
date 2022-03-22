@@ -4,6 +4,7 @@ import json
 from snakemake.utils import min_version
 
 min_version("5.18.0")
+configfile: "config.json"
 
 configfile: "config.json"
 

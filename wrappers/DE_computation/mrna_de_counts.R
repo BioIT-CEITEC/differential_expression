@@ -22,9 +22,10 @@
 
 #devtools::install_github("r-lib/later")
 
-library(data.table)
+
 
 run_all <- function(args){
+  library(data.table)
 
   config_file <- args[1]
   counts_file <- args[2]
@@ -46,11 +47,12 @@ run_all <- function(args){
   #remove unused samples
   condition_design <- config_tab$conditions_to_compare[1]
   if(condition_design != "all"){
-    condition_design <- strsplit(condition_design,",")[[1]]
-    condition_design <- condition_design[which(grepl(condsToCompare[1],condition_design) & grepl(condsToCompare[2],condition_design))]
-    condition_design <- strsplit(condition_design,":")[[1]]
+    #condition_design <- strsplit(condition_design,",")[[1]]
+    #condition_design <- condition_design[which(grepl(condsToCompare[1],condition_design) & grepl(condsToCompare[2],condition_design))]
+    #condition_design <- strsplit(condition_design,":")[[1]]
     setkey(config_tab,condition)
-    config_tab <- config_tab[condition_design,]
+    #config_tab <- config_tab[condition_design,]
+    config_tab <- config_tab[condsToCompare,]
   } else {
     setorder(config_tab,condition)
   }
@@ -248,10 +250,10 @@ run_all <- function(args){
 
   cond_colours<-brewer.pal(num.conds, "Set1")[as.factor(conds)]
   names(cond_colours)<-conds
-  cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
-  # cond_shapes<-c("\u25CF","\u25B2","\u25FE","\u25C6","\u25BC","\u25BA","\u25C4","\u25C9","\u25C8","\u25A3","\u25E9","\u25EA")[]
-  cond_shapes<-cond_shapes[unique(coldata$patient)]
-  names(cond_shapes)<-unique(coldata$patient)
+  # cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
+  # # cond_shapes<-c("\u25CF","\u25B2","\u25FE","\u25C6","\u25BC","\u25BA","\u25C4","\u25C9","\u25C8","\u25A3","\u25E9","\u25EA")[]
+  # cond_shapes<-cond_shapes[unique(coldata$patient)]
+  # names(cond_shapes)<-unique(coldata$patient)
 
   bp <- ggplot(data.table(sample = colnames(mrcounts), value = colSums(mrcounts), condition=conds), aes(sample,value, fill=condition)) +
     geom_bar(stat = "identity", width = 0.8) +
@@ -403,10 +405,10 @@ run_all <- function(args){
   rcs_ncs = plot_grid(rcs,ncs,nrow=2)
 
   # now add the title
-  if(length(condition_design) == 1){
+  if(condition_design == "all"){
     count.title = "All samples"
   }else{
-    count.title = paste0(condition_design[1]," vs ",condition_design[2])
+    count.title = paste0(condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -432,14 +434,14 @@ run_all <- function(args){
   # Heatmaps
   library("gplots")
 
-  if(length(condition_design) == 1){
+  if(condition_design == "all"){
     hm.log.title = "Sample to Sample Correlation (Log2)"
     hm.vst.title = "Sample to Sample Correlation (VST)"
     hm.raw.title = "Sample to Sample Correlation (Raw Counts)"
   }else{
-    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2])
-    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2])
-    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2])
+    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -466,14 +468,14 @@ run_all <- function(args){
   if(PAIRED==TRUE){ # If paired - remove batch effect
     print("Plotting sample heatmaps with batch correction as well.")
 
-    if(length(condition_design) == 1){
+    if(condition_design == "all"){
       hm.log.title = "Sample to Sample Correlation (Log2)\nwith a batch effect removed"
       hm.vst.title = "Sample to Sample Correlation (VST)\nwith a batch effect removed"
       hm.raw.title = "Sample to Sample Correlation (Raw Counts)\nwith a batch effect removed"
     }else{
-      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
-      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
-      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condition_design[1]," vs ",condition_design[2],"\nwith a batch effect removed")
+      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
     }
 
     pdf(file="heatmaps_samples_batch.pdf")
@@ -499,94 +501,166 @@ run_all <- function(args){
   }
 
   vstcounts<-vstcounts[apply(vstcounts, 1, max) != 0,]
-  pca<-princomp(vstcounts)
-
-  pdf(file="sample_to_sample_PCA.pdf")
-  # First two components
-  par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plot(pca$loadings, col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)")
-  text(pca$loadings, as.vector(colnames(mrcounts)), pos=3)
-  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  # Three components
-  par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
-  plot(pca$loadings[,c(1,2)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC2", xlab="PC1")
-  text(pca$loadings[,c(1,2)], as.vector(colnames(mrcounts)), pos=3)
-  plot(pca$loadings[,c(1,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC1")
-  text(pca$loadings[,c(1,3)], as.vector(colnames(mrcounts)), pos=3)
-  plot(pca$loadings[,c(2,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC2")
-  text(pca$loadings[,c(2,3)], as.vector(colnames(mrcounts)), pos=3)
-  legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
-  dev.off()
+  # pca<-princomp(vstcounts)
+  #
+  # pdf(file="sample_to_sample_PCA.pdf")
+  # # First two components
+  # par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
+  # plot(pca$loadings, col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)")
+  # text(pca$loadings, as.vector(colnames(mrcounts)), pos=3)
+  # legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
+  # # Three components
+  # par(mfrow=c(1,3), oma=c(2,0,0,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
+  # plot(pca$loadings[,c(1,2)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC2", xlab="PC1")
+  # text(pca$loadings[,c(1,2)], as.vector(colnames(mrcounts)), pos=3)
+  # plot(pca$loadings[,c(1,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC1")
+  # text(pca$loadings[,c(1,3)], as.vector(colnames(mrcounts)), pos=3)
+  # plot(pca$loadings[,c(2,3)], col=cond_colours,  pch=19, cex=2, main="Sample to Sample PCA (VST)", ylab="PC3", xlab="PC2")
+  # text(pca$loadings[,c(2,3)], as.vector(colnames(mrcounts)), pos=3)
+  # legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
+  # dev.off()
 
 
   library(ggrepel)
 
-  pcaData <- as.data.frame(prcomp(vstcounts)$rotation)
-  pcaData$sample <- rownames(pcaData)
-  pcaData <- merge(pcaData, samples_desc, by="sample")
-
-  if(length(condition_design) == 1){
-    pca.title = "PCA (DESeq2 VST)"
+  if(condition_design == "all"){
+    pca.title <- "PCA (DESeq2 VST)"
   }else{
-    pca.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2])
+    pca.title <- paste0("PCA (DESeq2 VST) ",condsToCompare[2]," vs ",condsToCompare[1])
   }
 
-  pca1 <- ggplot(pcaData, aes(PC1, PC2, color=condition))
-  if(length(unique(pcaData$patient)) == length(pcaData$patient)){
-    pca1 = pca1 + geom_point(size=3)
+  # calculate the variance for each gene
+  rv <- rowVars(vstcounts)
+  # select the ntop genes by variance
+  select <- order(rv, decreasing=TRUE)[seq_len(min(500, length(rv)))]
+  # perform a PCA on the data in vstcounts for the selected genes
+  pcaData <- prcomp(t((vstcounts)[select,]))
+  # the contribution to the total variance for each component
+  percentVar <- pcaData$sdev^2 / sum( pcaData$sdev^2 )
+  # assembly the data for the plot
+  pca <- data.frame(PC1=pcaData$x[,1], PC2=pcaData$x[,2], PC3=pcaData$x[,3])
+  pca$sample <- rownames(pca)
+  pca <- merge(samples_desc, pca, by="sample")
+
+  pca1 <- ggplot(pca, aes(PC1, PC2, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca1 <- pca1 + geom_point(size=4, alpha=0.8)
   }else{
-    pca1 = pca1 + geom_point(size=3, aes(shape = patient))
+    pca1 <- pca1 + geom_point(size=4, alpha=0.8, aes(shape = patient))
   }
-  pca1 = pca1 + scale_color_manual(values = unique(cond_colours), name="") +
+  pca1 <- pca1 + scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
-    scale_shape_manual(values=cond_shapes) +
-    xlab("PC1") +
-    ylab("PC2") +
+    #scale_shape_manual(values=cond_shapes) +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
+    xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+    ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
     theme(legend.position="bottom") +
     ggtitle(pca.title)
 
-  pca1S = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData$sample))
-  pca1P = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData$sample))
+  pca1S <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca$sample))
+  pca1P <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca$sample))
 
   ggsave(filename = "sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "sample_to_sample_PCA.svg", pca1S, width = 7, height = 7, device="svg")
   ggsave(filename = "sample_to_sample_PCA2.svg", pca1P, width = 7, height = 7, device="svg")
-  #ggsave(filename = "sample_to_sample_PCA.pdf", pca1, width = 7, height = 7, device="pdf")
+  ggsave(filename = "sample_to_sample_PCA.pdf", pca1S, width = 7, height = 7, device=cairo_pdf)
+  ggsave(filename = "sample_to_sample_PCA2.pdf", pca1P, width = 7, height = 7, device=cairo_pdf)
+
+  pca1v3 <- ggplot(pca, aes(PC1, PC3, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.8)
+  }else{
+    pca1v3 <- pca1v3 + geom_point(size=4, alpha=0.8, aes(shape = patient))
+  }
+  pca1v3 <- pca1v3 + scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
+    xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+    ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+    theme(plot.title = element_text(face="bold")) +
+    ggrepel::geom_text_repel(aes(PC1, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    theme(legend.position = "none") +
+    ggtitle(pca.title)
+
+  pca2v3 <- ggplot(pca, aes(PC2, PC3, color=condition))
+  if(length(unique(pca$patient)) == length(pca$patient)){
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.8)
+  }else{
+    pca2v3 <- pca2v3 + geom_point(size=4, alpha=0.8, aes(shape = patient))
+  }
+  pca2v3 <- pca2v3 + scale_color_manual(values = unique(cond_colours), name="") +
+    theme_bw() +
+    scale_shape_manual(values=1:length(unique(pca$patient))) +
+    xlab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+    ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+    theme(plot.title = element_text(face="bold")) +
+    ggrepel::geom_text_repel(aes(PC2, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    theme(legend.position = "none") +
+    ggtitle(pca.title)
+
+  pca1v2 <- pca1P + theme(legend.position = "none")
+
+  pcax3 <- plot_grid(pca1v2, pca1v3, pca2v3, nrow = 1)
+  pcax3.legend <- get_legend( pca1 )
+  pcax3wlegend <- plot_grid(pcax3, pcax3.legend, ncol = 1, rel_heights = c(1, .1))
+  ggsave(filename = "sample_to_sample_PCAx3.pdf", pcax3wlegend, width = 7, height = 7, device=cairo_pdf)
+
+  ## 3D PCA plot
+  library(plotly)
+  library(htmlwidgets)
+
+  pca3D <- plot_ly(pca, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors=unique(cond_colours))
+  pca3D <- pca3D %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar[1] * 100,2),"% variance")),
+                                         yaxis = list(title = paste0("PC2: ",round(percentVar[2] * 100,2),"% variance")),
+                                         zaxis = list(title = paste0("PC3: ",round(percentVar[3] * 100,2),"% variance"))))
+  pca3D <- pca3D %>% add_trace(text = pca$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+  pca3D <- pca3D %>% layout( title = list(text=pca.title, size = 10))
+
+  htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D.html")
 
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(PAIRED == T){
     library("ggplot2")
     library("ggrepel")
 
-    pcaData_batch <- as.data.frame(prcomp(vstcounts_batch)$rotation)
-    pcaData_batch$sample <- rownames(pcaData_batch)
-    pcaData_batch <- merge(pcaData_batch, samples_desc, by="sample")
-
     if(length(condition_design) == 1){
-      pca_batch.title = "PCA (DESeq2 VST) with a batch effect removed"
+      pca_batch.title <- "PCA (DESeq2 VST) with a batch effect removed"
     }else{
-      pca_batch.title = paste0("PCA (DESeq2 VST) ",condition_design[1]," vs ",condition_design[2]," with a batch effect removed")
+      pca_batch.title <- paste0("PCA (DESeq2 VST) ",condsToCompare[2]," vs ",condsToCompare[1]," with a batch effect removed")
     }
 
-    pca1_batch <- ggplot(pcaData_batch, aes(PC1, PC2, color=condition))
-    if(length(unique(pcaData_batch$patient)) == length(pcaData_batch$patient)){
-      pca1_batch = pca1_batch + geom_point(size=3)
+    # calculate the variance for each gene
+    rv_batch <- rowVars(vstcounts_batch)
+    # select the ntop genes by variance
+    select_batch <- order(rv_batch, decreasing=TRUE)[seq_len(min(500, length(rv_batch)))]
+    # perform a PCA on the data in vstcounts_batch for the selected genes
+    pcaData_batch <- prcomp(t((vstcounts_batch)[select_batch,]))
+    # the contribution to the total variance for each component
+    percentVar_batch <- pcaData_batch$sdev^2 / sum( pcaData_batch$sdev^2 )
+    # assembly the data for the plot
+    pca_batch <- data.frame(PC1=pcaData_batch$x[,1], PC2=pcaData_batch$x[,2], PC3=pcaData_batch$x[,3])
+    pca_batch$sample <- rownames(pca_batch)
+    pca_batch <- merge(samples_desc, pca_batch, by="sample")
+
+    pca1_batch <- ggplot(pca_batch, aes(PC1, PC2, color=condition))
+    if(length(unique(pca_batch$patient)) == length(pca_batch$patient)){
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.8)
     }else{
-      pca1_batch = pca1_batch + geom_point(size=3, aes(shape = patient))
+      pca1_batch <- pca1_batch + geom_point(size=4, alpha=0.8, aes(shape = patient))
     }
-    pca1_batch = pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
+    pca1_batch <- pca1_batch + scale_color_manual(values = unique(cond_colours), name="") +
       theme_bw() +
-      scale_shape_manual(values=cond_shapes) +
-      xlab("PC1") +
-      ylab("PC2") +
+      scale_shape_manual(values=1:length(unique(pca$patient))) +
+      xlab(paste0("PC1: ",round(percentVar_batch[1] * 100),"% variance")) +
+      ylab(paste0("PC2: ",round(percentVar_batch[2] * 100),"% variance")) +
       theme(plot.title = element_text(face="bold")) +
       theme(legend.position="bottom") +
       ggtitle(pca_batch.title)
 
-    pca1_batchS = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pcaData_batch$patient))
-    pca1_batchP = pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData_batch$patient))
+    pca1_batchS <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca_batch$patient))
+    pca1_batchP <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca_batch$patient))
 
     ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -594,23 +668,36 @@ run_all <- function(args){
     ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
     ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
 
-    pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
-    pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
-    percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
-    pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
-      geom_point(size=4, aes(shape = patient)) +
-      scale_color_manual(values = unique(cond_colours), name="") +
-      theme_bw() +
-      scale_shape_manual(values=cond_shapes) +
-      ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
-      xlab(paste0("PC1: ",percentVar[1],"% variance")) +
-      ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-      theme(plot.title = element_text(face="bold")) +
-      theme(legend.position="bottom") +
-      ggtitle(pca_batch.title)
+    ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device=cairo_pdf)
+    ggsave(filename = "sample_to_sample_PCA_batch2.pdf", pca1_batchP, width = 7, height = 7, device=cairo_pdf)
+
+    ## 3D PCA plot
+    pca3D_batch <- plot_ly(pca_batch, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors=unique(cond_colours))
+    pca3D_batch <- pca3D_batch %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar_batch[1] * 100,2),"% variance")),
+                                         yaxis = list(title = paste0("PC2: ",round(percentVar_batch[2] * 100,2),"% variance")),
+                                         zaxis = list(title = paste0("PC3: ",round(percentVar_batch[3] * 100,2),"% variance"))))
+    pca3D <- pca3D %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+    pca3D <- pca3D %>% layout( title = list(text=pca_batch.title, size = 10))
+
+    htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D_batch.html")
+
+
+    #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
+    #pcaData2_batch$condition <- as.vector(pcaData2_batch$condition)
+    #percentVar <- round(100 * attr(pcaData2_batch, "percentVar"))
+    #pca2_batch<-ggplot(pcaData2_batch, aes(PC1, PC2, color=condition)) +
+    #  geom_point(size=4, aes(shape = patient)) +
+    #  scale_color_manual(values = unique(cond_colours), name="") +
+    #  theme_bw() +
+    #  ggrepel::geom_text_repel(aes(PC1, PC2, label = rownames(pcaData2_batch)), color="black") +
+    #  xlab(paste0("PC1: ",percentVar[1],"% variance")) +
+    #  ylab(paste0("PC2: ",percentVar[2],"% variance")) +
+    #  theme(plot.title = element_text(face="bold")) +
+    #  theme(legend.position="bottom") +
+    #  ggtitle(pca_batch.title)
 
     #ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batch, units = "in", dpi=200, width = 7, height = 7, device="png")
-    ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca2_batch, width = 7, height = 7, device="pdf")
+    #ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca2_batch, width = 7, height = 7, device="pdf")
 
     write.table(x = assay(vsd_batch), file = "norm_counts_batch.tsv", sep = "\t", col.names = NA)
   }
@@ -800,67 +887,34 @@ run_all <- function(args){
   library("ggrepel")
   resForPlot<-as.data.frame(res)
   resForPlot$Gene<-parsedEnsembl[rownames(res), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
-  p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
+  results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  volkan <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
 
   results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  volkan <- volkan + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.pdf", sep=""))
-  print(p)
+  print(volkan)
   dev.off()
 
   png(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.png", sep=""), units = "in",width = 7, height = 7, res = 200)
-  print(p)
+  print(volkan)
   dev.off()
 
   svg(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""),width = 7, height = 7)
-  print(p)
+  print(volkan)
   dev.off()
 
   #ggsave(paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_ggplot2.svg", sep=""), p, width = 7, height = 7, device = svg)
 
-  # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
-  # p = ggplot(results, aes(baseMean, log2FoldChange)) +
-  #   geom_point(aes(col=sig), size=0.5) +
-  #   scale_color_manual(values=c("black", "red"))
-  # p
-  # results<-results[order(results$padj, results$pvalue),] # make sure it is correctly ordered
-  # p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
-  # p+geom_text_repel(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
-  #   geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
-  #   ggtitle(paste("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
-  #   theme(plot.title = element_text(hjust = 0.5))
-
   # Great MA plot http://www.sthda.com/english/rpkgs/ggpubr/reference/ggmaplot.html
   library("ggpubr")
-
-  # Add custom gene names to MA plot - there is a issue with coloring of the extra genes which are being considered as DE (and colored) even if they are not
-  # selectedGenes<-which(resForPlot$Gene %in% c("IL2RA", "IL2RB"))
-  # resForPlot[selectedGenes, "padj"] <- 0
-  #
-  # TOP<-TOP+length(selectedGenes)
-  #
-  # pdf(file=paste("MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_ggpubr.pdf", sep=""))
-  # #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
-  #   ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
-  #            fdr = P_THRESHOLD, fc = 0, size = 0.4,
-  #            palette = c("#B31B21", "#1465AC", "darkgray"),
-  #            genenames = as.vector(resForPlot$Gene),
-  #            legend = "top", top = TOP,
-  #            font.label = c("bold", 11),
-  #            font.legend = "bold",
-  #            font.main = "bold",
-  #            ggtheme = ggplot2::theme_minimal())+
-  #     theme(plot.title = element_text(hjust = 0.5))
-  # dev.off()
-
 
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
   ma <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
@@ -937,8 +991,8 @@ run_all <- function(args){
   # library(ggrepel)
   resForPlot<-as.data.frame(resNoFil)
   resForPlot$Gene<-parsedEnsembl[rownames(resNoFil), "gene_name"]
-  results = mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
-  p = ggplot(results, aes(log2FoldChange, -log10(padj))) +
+  results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  volkan_nofilt <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
   #p
@@ -946,11 +1000,11 @@ run_all <- function(args){
   #p+geom_text(data=filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)
 
   pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1], "_noIndFilt_ggplot2.pdf", sep=""))
-  p <- p + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
+  volkan_nofilt <- volkan_nofilt + geom_text_repel(data=dplyr::filter(results[1:TOP,], padj<P_THRESHOLD), aes(label=Gene), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep=""))+
     theme(plot.title = element_text(hjust = 0.5))
-  print(p)
+  print(volkan_nofilt)
   dev.off()
 
   # Trying MA plot with ggplot2 http://www.gettinggeneticsdone.com/2016/01/repel-overlapping-text-labels-in-ggplot2.html
@@ -970,7 +1024,7 @@ run_all <- function(args){
 
   pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt_ggpubr.pdf", sep=""))
   #ggmaplot(resForPlot, main =  expression("Group 1" %->% "Group 2"),
-  p <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
+  ma_nofilt <- ggmaplot(resForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
                 fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
                 palette = c("#B31B21", "#1465AC", "darkgray"),
                 genenames = as.vector(resForPlot$Gene),
@@ -980,7 +1034,7 @@ run_all <- function(args){
                 font.main = "bold",
                 ggtheme = ggplot2::theme_minimal())+
     theme(plot.title = element_text(hjust = 0.5))
-  print(p)
+  print(ma_nofilt)
   dev.off()
 
   TOP<-TOP_BCKP
