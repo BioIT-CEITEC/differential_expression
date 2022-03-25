@@ -367,22 +367,22 @@ run_all <- function(args){
 
   # Normalization check
 
-  rawcountsum = colSums(rawcounts)
-  rawcountsum = as.data.frame(rawcountsum)
-  rawcountsum$Sample = row.names(rawcountsum)
-  rawcountsum = as.data.table(rawcountsum)
-  rawcountsum = melt(rawcountsum, id.vars = c("Sample"))
-  rawcountsum = rawcountsum[, .(Sample, condition=conds, value)]
+  rawcountsum <- colSums(rawcounts)
+  rawcountsum <- as.data.frame(rawcountsum)
+  rawcountsum$Sample <- row.names(rawcountsum)
+  rawcountsum <- as.data.table(rawcountsum)
+  rawcountsum <- melt(rawcountsum, id.vars = c("Sample"))
+  rawcountsum <- rawcountsum[, .(Sample, condition=conds, value)]
 
-  normcountsum = colSums(normcounts)
-  normcountsum = as.data.frame(normcountsum)
-  normcountsum$Sample = row.names(normcountsum)
-  normcountsum = as.data.table(normcountsum)
-  normcountsum = melt(normcountsum, id.vars = c("Sample"))
-  normcountsum = normcountsum[, .(Sample, condition=conds, value)]
+  normcountsum <- colSums(normcounts)
+  normcountsum <- as.data.frame(normcountsum)
+  normcountsum$Sample <- row.names(normcountsum)
+  normcountsum <- as.data.table(normcountsum)
+  normcountsum <- melt(normcountsum, id.vars = c("Sample"))
+  normcountsum <- normcountsum[, .(Sample, condition=conds, value)]
 
   library(cowplot)
-  rcs=ggplot(rawcountsum, aes(Sample, value, fill=condition))+
+  rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -392,7 +392,7 @@ run_all <- function(args){
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
 
-  ncs=ggplot(normcountsum, aes(Sample, value, fill=condition))+
+  ncs <- ggplot(normcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -402,13 +402,13 @@ run_all <- function(args){
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
 
-  rcs_ncs = plot_grid(rcs,ncs,nrow=2)
+  rcs_ncs <- plot_grid(rcs,ncs,nrow=2)
 
   # now add the title
   if(condition_design == "all"){
-    count.title = "All samples"
+    count.title <- "All samples"
   }else{
-    count.title = paste0(condsToCompare[2]," vs ",condsToCompare[1])
+    count.title <- paste0(condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -425,7 +425,7 @@ run_all <- function(args){
     )
 
   # rel_heights values control vertical title margins
-  title_rcs_ncs = plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
+  title_rcs_ncs <- plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
 
   ggsave(filename = "pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
   ggsave(filename = "pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
@@ -435,13 +435,13 @@ run_all <- function(args){
   library("gplots")
 
   if(condition_design == "all"){
-    hm.log.title = "Sample to Sample Correlation (Log2)"
-    hm.vst.title = "Sample to Sample Correlation (VST)"
-    hm.raw.title = "Sample to Sample Correlation (Raw Counts)"
+    hm.log.title <- "Sample to Sample Correlation (Log2)"
+    hm.vst.title <- "Sample to Sample Correlation (VST)"
+    hm.raw.title <- "Sample to Sample Correlation (Raw Counts)"
   }else{
-    hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1])
-    hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1])
-    hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.log.title <- paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.vst.title <- paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1])
+    hm.raw.title <- paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1])
   }
 
 
@@ -469,13 +469,13 @@ run_all <- function(args){
     print("Plotting sample heatmaps with batch correction as well.")
 
     if(condition_design == "all"){
-      hm.log.title = "Sample to Sample Correlation (Log2)\nwith a batch effect removed"
-      hm.vst.title = "Sample to Sample Correlation (VST)\nwith a batch effect removed"
-      hm.raw.title = "Sample to Sample Correlation (Raw Counts)\nwith a batch effect removed"
+      hm.log.title <- "Sample to Sample Correlation (Log2)\nwith a batch effect removed"
+      hm.vst.title <- "Sample to Sample Correlation (VST)\nwith a batch effect removed"
+      hm.raw.title <- "Sample to Sample Correlation (Raw Counts)\nwith a batch effect removed"
     }else{
-      hm.log.title = paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
-      hm.vst.title = paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
-      hm.raw.title = paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.log.title <- paste0("Sample to Sample Correlation (Log2)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.vst.title <- paste0("Sample to Sample Correlation (VST)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
+      hm.raw.title <- paste0("Sample to Sample Correlation (Raw Counts)\n",condsToCompare[2]," vs ",condsToCompare[1],"\nwith a batch effect removed")
     }
 
     pdf(file="heatmaps_samples_batch.pdf")
