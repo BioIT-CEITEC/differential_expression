@@ -243,9 +243,9 @@ run_all <- function(args){
   ####################################################################################################
   library(ggplot2)
   if(length(unique(conds)) >= 3){
-    num.conds = length(unique(conds))
+    num.conds <- length(unique(conds))
   }else{
-    num.conds = 3
+    num.conds <- 3
   }
 
   cond_colours<-brewer.pal(num.conds, "Set1")[as.factor(conds)]
@@ -382,7 +382,7 @@ run_all <- function(args){
   normcountsum <- normcountsum[, .(Sample, condition=conds, value)]
 
   library(cowplot)
-  rcs<-ggplot(rawcountsum, aes(Sample, value, fill=condition))+
+  rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -392,7 +392,7 @@ run_all <- function(args){
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
 
-  ncs<-ggplot(normcountsum, aes(Sample, value, fill=condition))+
+  ncs <- ggplot(normcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -1302,19 +1302,19 @@ run_all <- function(args){
   points<-c(0, 1, 2, 5, 6, 15, 16, 17, 18)
 
   if(length(unique(d$samples$group)) >= 3){
-    num.conds = length(unique(conds))
+    num.conds <- length(unique(conds))
   }else{
-    num.conds = 3
+    num.conds <- 3
   }
 
   cond_colours<-brewer.pal(num.conds, "Paired")[d$samples$group]
   names(cond_colours)<-d$samples$group
 
-  dfMDS=data.frame(x=plotMDS(d,method="bcv")$x, y=plotMDS(d,method="bcv")$y)
-  dfMDS$sample = rownames(dfMDS)
-  dfMDS$condition = conds
+  dfMDS<-data.frame(x=plotMDS(d,method="bcv")$x, y=plotMDS(d,method="bcv")$y)
+  dfMDS$sample <- rownames(dfMDS)
+  dfMDS$condition <- conds
 
-  mds = ggplot(dfMDS, aes(x, y, color=condition)) +
+  mds <- ggplot(dfMDS, aes(x, y, color=condition)) +
     geom_point(size = 3) +
     scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
@@ -1334,15 +1334,15 @@ run_all <- function(args){
   logCPM<-cpm(d2, log=TRUE, prior.count=5)
   logCPMc<-removeBatchEffect(logCPM, coldata$patient)
 
-  dflogCPM=data.frame(x=plotMDS(logCPM)$x, y=plotMDS(logCPM)$y)
-  dflogCPM$sample = rownames(dflogCPM)
-  dflogCPM$condition = conds
+  dflogCPM<-data.frame(x=plotMDS(logCPM)$x, y=plotMDS(logCPM)$y)
+  dflogCPM$sample <- rownames(dflogCPM)
+  dflogCPM$condition <- conds
 
-  dflogCPMc=data.frame(x=plotMDS(logCPMc)$x, y=plotMDS(logCPMc)$y)
-  dflogCPMc$sample = rownames(dflogCPMc)
-  dflogCPMc$condition = conds
+  dflogCPMc<-data.frame(x=plotMDS(logCPMc)$x, y=plotMDS(logCPMc)$y)
+  dflogCPMc$sample <- rownames(dflogCPMc)
+  dflogCPMc$condition <- conds
 
-  mds.logcpm = ggplot(dflogCPM, aes(x, y, color=condition)) +
+  mds.logcpm <- ggplot(dflogCPM, aes(x, y, color=condition)) +
     geom_point(size = 3) +
     scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
@@ -1356,7 +1356,7 @@ run_all <- function(args){
     ggrepel::geom_text_repel(aes(x, y, label = sample), color="black") +
     theme(plot.title = element_text(face="bold"))
 
-  mds.logcpmc = ggplot(dflogCPMc, aes(x, y, color=condition)) +
+  mds.logcpmc <- ggplot(dflogCPMc, aes(x, y, color=condition)) +
     geom_point(size = 3) +
     scale_color_manual(values = unique(cond_colours), name="") +
     theme_bw() +
@@ -1370,12 +1370,12 @@ run_all <- function(args){
     ggrepel::geom_text_repel(aes(x, y, label = sample), color="black") +
     theme(plot.title = element_text(face="bold"))
 
-  pmds = plot_grid(mds.logcpm, mds.logcpmc, ncol = 2,align = "hv")
+  pmds <- plot_grid(mds.logcpm, mds.logcpmc, ncol = 2,align = "hv")
 
   ggsave("MDS_plot_batchEffect.pdf", pmds, units = "in", width = 7, height = 7, dpi=200)
 
   ### Plot expression profiles
-  pdens = ggplot(reshape2::melt(logCPM), aes(value, color=Var2)) +
+  pdens <- ggplot(reshape2::melt(logCPM), aes(value, color=Var2)) +
     geom_density() +
     #theme_bw() +
     scale_color_brewer(palette = "Set3") +
@@ -1386,7 +1386,7 @@ run_all <- function(args){
     theme(legend.position="bottom") +
     labs(color = "")
 
-  ggsave("normalized_gene_expression_check.pdf", units = "in", width = 7, height = 7, dpi=200)
+  ggsave(pdens, "normalized_gene_expression_check.pdf", units = "in", width = 7, height = 7, dpi=200)
 
   # Plot BCV plot
   pdf(file="BCV_plot.pdf")
@@ -1438,14 +1438,14 @@ run_all <- function(args){
   ## need genes in rows, P-values, adj. P-values (FDR), logFC and gene labels
   res.tgwForPlot<-combResults.tgw[c(1:5,7)]
 
-  edge.results = mutate(res.tgwForPlot, sig=ifelse(res.tgwForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
-  p = ggplot(edge.results, aes(log2FoldChange, -log10(padj))) +
+  edge.results <- mutate(res.tgwForPlot, sig=ifelse(res.tgwForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
+  p <- ggplot(edge.results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
     scale_color_manual(values=c("black", "red"))
 
   edge.results<-edge.results[order(edge.results$padj, edge.results$pvalue),] # make sure it is correctly ordered
 
-  p = p + geom_text_repel(data=dplyr::filter(edge.results[1:TOP,], padj<P_THRESHOLD), aes(label=gene_name), size=3)+geom_vline(xintercept = 0)+
+  p <- p + geom_text_repel(data=dplyr::filter(edge.results[1:TOP,], padj<P_THRESHOLD), aes(label=gene_name), size=3)+geom_vline(xintercept = 0)+
     geom_vline(xintercept = c(LFC_THRESHOLD, -LFC_THRESHOLD), linetype = "longdash", colour="blue")+
     ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)", sep=""))+
     theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
@@ -1455,7 +1455,7 @@ run_all <- function(args){
   dev.off()
 
   ###
-  res.tgwForPlot$baseMean = exp(res.tgwForPlot$logCPM)
+  res.tgwForPlot$baseMean <- exp(res.tgwForPlot$logCPM)
   edge.ma <- ggmaplot(res.tgwForPlot, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes (edgeR)"),
                  fdr = P_THRESHOLD, fc = FOLD_CHANGE, size = 0.4,
                  palette = c("#B31B21", "#1465AC", "darkgray"),
