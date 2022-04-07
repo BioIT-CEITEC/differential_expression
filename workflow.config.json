@@ -56,7 +56,16 @@
       "keep_not_compared_samples_for_normalization": {
         "label": "Keep not compared samples for normalization.",
         "type": "bool",
-        "default": true
+        "default": true,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "normalize_data_per_comparison": false
+            }
+          }
+        }
       },
       "normalize_data_per_comparison": {
         "label": "Normalize read counts to all samples OR per comparison.",

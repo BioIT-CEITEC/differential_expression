@@ -31,6 +31,7 @@ rule DE_computation:
             sample_tab = sample_tab,
             experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
             comparison_dir_list = comparison_dir_list,
+            keep_not_compared_samples_for_normalization = config["keep_not_compared_samples_for_normalization"],
             normalize_data_per_comparison = config["normalize_data_per_comparison"],
             use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
             remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
