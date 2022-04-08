@@ -1,9 +1,8 @@
 
-
 def final_variant_calling_report_input(wildcards):
     input = {}
 
-    if (sample_tab.condition != "").all() and (sample_tab.tag != "").all():
+    if (sample_tab.condition != "").all() and (sample_tab.replicate != "").all():
         if config['conditions_to_compare'] == "all":
             condition_list = sorted(sample_tab.condition)
         else:
@@ -26,7 +25,7 @@ def final_variant_calling_report_input(wildcards):
         if config["ref_from_trans_assembly"] != False:
             input['trans_ids_map'] = expand("{ref_dir}/annot/{ref}.transdecoder_ids_map", ref_dir=reference_directory,ref=config["reference"])[0]
     else:
-        raise ValueError("There is no conditions or tag for samples!")
+        raise ValueError("There is no conditions or replicate for samples!")
     return input
 
 
