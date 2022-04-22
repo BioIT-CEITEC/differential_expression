@@ -103,8 +103,8 @@
         "type": "string",
         "default": ""
       },
-      "tag": {
-        "label": "Tag",
+      "replicate": {
+        "label": "Replicate ID",
         "type": "string",
         "default": ""
       }
