@@ -20,7 +20,7 @@
     "entity_name",
     "sample_name",
     "condition",
-    "tag"
+    "replicate"
   ],
   "requested_params": [
     "is_paired",
