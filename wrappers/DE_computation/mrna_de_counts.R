@@ -40,7 +40,7 @@ run_all <- function(args){
 
   config_tab <- as.data.table(rjson::fromJSON(file = config_file))
   config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
-  config_tab[,tag       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$tag)]
+  config_tab[,replicate       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$replicate)]
   config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
 
 
@@ -65,7 +65,7 @@ run_all <- function(args){
 
   #create sample description tab
   if(use_tag_to_pair_samples == T){
-    samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = tag)]
+    samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = replicate)]
   } else {
     if(length(unique(config_tab$donor)) > 1){
       samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = donor)]
