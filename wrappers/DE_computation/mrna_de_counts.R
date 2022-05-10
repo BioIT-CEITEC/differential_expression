@@ -40,7 +40,7 @@ run_all <- function(args){
 
   config_tab <- as.data.table(rjson::fromJSON(file = config_file))
   config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
-  config_tab[,tag       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$tag)]
+  config_tab[,replicate := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$replicate)]
   config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
 
 
@@ -65,7 +65,7 @@ run_all <- function(args){
 
   #create sample description tab
   if(use_tag_to_pair_samples == T){
-    samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = tag)]
+    samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = replicate)]
   } else {
     if(length(unique(config_tab$donor)) > 1){
       samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = donor)]
@@ -717,10 +717,10 @@ run_all <- function(args){
   if(INTERCEPT==T){
     print("Using intercept in lfc shrink")
     if(length(grep(paste0("_vs_", condsToCompare[1], "\\b"), resultsNames(dds)))==(length(resultsNames(dds))-1)){ # Scan how many times we see condition 1 (intercept) - MOST LIKELY WILL CAUSE A LOT OF TROUBLES!!!
-      res<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=res)
+      res<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=res, type="normal")
       # resLFC <- lfcShrink(dds, coef=2, res=res) # Gives different results than contrast=c("condition", condsToCompare[2], condsToCompare[1]
     }else{
-      res<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=res) # this removes column lfcSE
+      res<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=res, type="normal") # this removes column lfcSE
     }
   }
 
@@ -777,10 +777,10 @@ run_all <- function(args){
   if(INTERCEPT==T){
     print("Using intercept in lfc shrink")
     if(length(grep(paste0("_vs_", condsToCompare[1], "\\b"), resultsNames(dds)))==(length(resultsNames(dds))-1)){ # Scan how many times we see condition 1 (intercept) - MOST LIKELY WILL CAUSE A LOT OF TROUBLES!!!
-      resNoFil<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=resNoFil)
+      resNoFil<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=resNoFil, type="normal")
       # resNoFilLFC <- lfcShrink(dds, coef=2, res=resNoFil) # Gives different results than contrast=c("condition", condsToCompare[2], condsToCompare[1]
     }else{
-      resNoFil<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=resNoFil) # this removes column lfcSE
+      resNoFil<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=resNoFil, type="normal") # this removes column lfcSE
     }
   }
 
