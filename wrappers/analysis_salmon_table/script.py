@@ -13,6 +13,7 @@ f.close()
 
 command = "$CONDA_PREFIX/bin/Rscript "+os.path.abspath(os.path.dirname(__file__))+"/combine_salmon_tabs.R "+\
             snakemake.output.salmon + " " +\
+            snakemake.params.tx2gene + " " +\
             " ".join(snakemake.input.salmon) + " >> " + log_filename + " 2>&1 "
 
 f = open(log_filename, 'a+')
