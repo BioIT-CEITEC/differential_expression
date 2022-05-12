@@ -676,10 +676,10 @@ run_all <- function(args){
     pca3D_batch <- pca3D_batch %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar_batch[1] * 100,2),"% variance")),
                                          yaxis = list(title = paste0("PC2: ",round(percentVar_batch[2] * 100,2),"% variance")),
                                          zaxis = list(title = paste0("PC3: ",round(percentVar_batch[3] * 100,2),"% variance"))))
-    pca3D <- pca3D %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
-    pca3D <- pca3D %>% layout( title = list(text=pca_batch.title, size = 10))
+    pca3D_batch <- pca3D_batch %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+    pca3D_batch <- pca3D_batch %>% layout( title = list(text=pca_batch.title, size = 10))
 
-    htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D_batch.html")
+    htmlwidgets::saveWidget(widget=pca3D_batch ,"sample_to_sample_PCA_3D_batch.html")
 
 
     #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
