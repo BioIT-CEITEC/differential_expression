@@ -52,10 +52,10 @@ def input_all(wildcards):
         input["feature_count"] = "results/feature_count_final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "results/RSEM_final_report.html"
-    if config["Salmon"]:
-        input["Salmon"] = "results/salmon_final_report.html"
-    if config["Kallisto"]:
-        input["Kallisto"] = "results/kallisto_final_report.html"
+    if config["salmon"]:
+        input["salmon"] = "results/salmon_final_report.html"
+    if config["kallisto"]:
+        input["kallisto"] = "results/kallisto_final_report.html"
     return input
 
 rule all:
