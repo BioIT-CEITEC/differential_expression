@@ -3,7 +3,7 @@
 def final_DE_report_input(wildcards):
     input = {}
 
-    if (sample_tab.condition != "").all() and (sample_tab.tag != "").all():
+    if (sample_tab.condition != "").all() and (sample_tab.replicate != "").all():
         if config['conditions_to_compare'] == "all":
             condition_list = sorted(sample_tab.condition)
         else:
