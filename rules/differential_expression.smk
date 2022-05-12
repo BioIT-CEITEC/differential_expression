@@ -75,7 +75,7 @@ rule analysis_RSEM_table:
     script: "../wrappers/analysis_RSEM_table/script.py"
 
 rule analysis_salmon_table:
-    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}.sf",sample=sample_tab.sample_name),
+    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}.salmon.sf",sample=sample_tab.sample_name),
     output: salmon = "results/analysis_salmon_table/complete.salmon.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"]
     log:    "logs/all_samples/complete.salmon.log"
@@ -83,7 +83,7 @@ rule analysis_salmon_table:
     script: "../wrappers/analysis_salmon_table/script.py"
 
 rule analysis_kallisto_table:
-    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.h5",sample=sample_tab.sample_name),
+    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.h5",sample=sample_tab.sample_name),
     output: kallisto = "results/analysis_kallisto_table/complete.kallisto.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"]
     log:    "logs/all_samples/complete.kallisto.log"

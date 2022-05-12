@@ -12,8 +12,8 @@ f.write("\n##\n## RULE: analysis_kallisto_table \n##\n")
 f.close()
 
 command = "$CONDA_PREFIX/bin/Rscript "+os.path.abspath(os.path.dirname(__file__))+"/combine_kallisto_tabs.R "+\
-            snakemake.output.RSEM + " " +\
-            " ".join(snakemake.input.RSEM) + " >> " + log_filename + " 2>&1 "
+            snakemake.output.kallisto + " " +\
+            " ".join(snakemake.input.kallisto) + " >> " + log_filename + " 2>&1 "
 
 f = open(log_filename, 'a+')
 f.write("## COMMAND: "+command+"\n")
