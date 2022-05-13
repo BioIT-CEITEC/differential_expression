@@ -84,7 +84,7 @@ rule analysis_salmon_table:
     script: "../wrappers/analysis_salmon_table/script.py"
 
 rule analysis_kallisto_table:
-    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.h5",sample=sample_tab.sample_name),
+    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.tsv",sample=sample_tab.sample_name),
     output: kallisto = "results/analysis_kallisto_table/complete.kallisto.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
             tx2gene = expand("{ref_dir}/index/transcript_gene.txt",ref_dir=reference_directory)[0]

@@ -8,7 +8,7 @@ run_all <- function(args){
   tx2gene_file <- args[2]
   tx2gene <- read_delim(file.path(tx2gene_file),delim='\t')
   file_list <- tail(args,-2)
-  sample_names <- gsub(".*kallisto/(.*).kallisto.h5","\\1",file_list)
+  sample_names <- gsub(".*kallisto/(.*).kallisto.tsv","\\1",file_list)
   names(file_list) <- sample_names
   txi <- tximport(file_list, type = "kallisto", tx2gene = tx2gene) # Read gene counts
   # head(txi$counts) # See header
