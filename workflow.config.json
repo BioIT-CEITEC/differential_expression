@@ -27,7 +27,9 @@
     "reference",
     "ref_from_trans_assembly",
     "feature_count",
-    "RSEM"
+    "RSEM",
+    "salmon",
+    "kallisto"
   ],
   "gui_params" : {
     "primary": {

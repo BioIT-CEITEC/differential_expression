@@ -42,7 +42,7 @@ else:
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "feature_count|RSEM",
+     analysis_type= "feature_count|RSEM|salmon|kallisto",
      #data_type= "tsv|RData"
 
 
@@ -54,6 +54,10 @@ def input_all(wildcards):
         input["feature_count"] = "results/feature_count_final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "results/RSEM_final_report.html"
+    if config["salmon"]:
+        input["salmon"] = "results/salmon_final_report.html"
+    if config["kallisto"]:
+        input["kallisto"] = "results/kallisto_final_report.html"
     return input
 
 rule all:

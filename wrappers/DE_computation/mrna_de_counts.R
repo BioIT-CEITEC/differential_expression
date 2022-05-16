@@ -40,7 +40,7 @@ run_all <- function(args){
 
   config_tab <- as.data.table(rjson::fromJSON(file = config_file))
   config_tab[,condition := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$condition)]
-  config_tab[,replicate       := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$replicate)]
+  config_tab[,replicate := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$replicate)]
   config_tab[,full_name := sapply(1:length(config_tab$samples),function(x) config_tab$samples[[x]]$sample_name)]
 
 
@@ -382,7 +382,7 @@ run_all <- function(args){
   normcountsum <- normcountsum[, .(Sample, condition=conds, value)]
 
   library(cowplot)
-  rcs<-ggplot(rawcountsum, aes(Sample, value, fill=condition))+
+  rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -392,7 +392,7 @@ run_all <- function(args){
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
 
-  ncs<-ggplot(normcountsum, aes(Sample, value, fill=condition))+
+  ncs <- ggplot(normcountsum, aes(Sample, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(cond_colours))+
     theme_bw() +
@@ -676,10 +676,10 @@ run_all <- function(args){
     pca3D_batch <- pca3D_batch %>% layout(scene = list(xaxis = list(title = paste0("PC1: ",round(percentVar_batch[1] * 100,2),"% variance")),
                                          yaxis = list(title = paste0("PC2: ",round(percentVar_batch[2] * 100,2),"% variance")),
                                          zaxis = list(title = paste0("PC3: ",round(percentVar_batch[3] * 100,2),"% variance"))))
-    pca3D <- pca3D %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
-    pca3D <- pca3D %>% layout( title = list(text=pca_batch.title, size = 10))
+    pca3D_batch <- pca3D_batch %>% add_trace(text = pca_batch$sample, type="scatter3d", mode = "markers", hoverinfo = 'text')
+    pca3D_batch <- pca3D_batch %>% layout( title = list(text=pca_batch.title, size = 10))
 
-    htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D_batch.html")
+    htmlwidgets::saveWidget(widget=pca3D_batch ,"sample_to_sample_PCA_3D_batch.html")
 
 
     #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
@@ -777,10 +777,10 @@ run_all <- function(args){
   if(INTERCEPT==T){
     print("Using intercept in lfc shrink")
     if(length(grep(paste0("_vs_", condsToCompare[1], "\\b"), resultsNames(dds)))==(length(resultsNames(dds))-1)){ # Scan how many times we see condition 1 (intercept) - MOST LIKELY WILL CAUSE A LOT OF TROUBLES!!!
-      resNoFil<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=resNoFil)
+      resNoFil<- lfcShrink(dds, coef=grep(paste0("condition_", condsToCompare[2], "_vs"), resultsNames(dds)), res=resNoFil, type="normal")
       # resNoFilLFC <- lfcShrink(dds, coef=2, res=resNoFil) # Gives different results than contrast=c("condition", condsToCompare[2], condsToCompare[1]
     }else{
-      resNoFil<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=resNoFil) # this removes column lfcSE
+      resNoFil<- lfcShrink(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), res=resNoFil, type="normal") # this removes column lfcSE
     }
   }
 
@@ -1386,7 +1386,7 @@ run_all <- function(args){
     theme(legend.position="bottom") +
     labs(color = "")
 
-  ggsave("normalized_gene_expression_check.pdf", units = "in", width = 7, height = 7, dpi=200)
+  ggsave("normalized_gene_expression_check.pdf", pdens, units = "in", width = 7, height = 7, dpi=200)
 
   # Plot BCV plot
   pdf(file="BCV_plot.pdf")

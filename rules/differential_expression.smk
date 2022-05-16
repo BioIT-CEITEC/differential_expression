@@ -1,5 +1,6 @@
 
-def final_variant_calling_report_input(wildcards):
+
+def final_DE_report_input(wildcards):
     input = {}
 
     if (sample_tab.condition != "").all() and (sample_tab.replicate != "").all():
@@ -30,7 +31,7 @@ def final_variant_calling_report_input(wildcards):
 
 
 rule DE_report:
-    input: unpack(final_variant_calling_report_input)
+    input: unpack(final_DE_report_input)
     output: html = "results/{analysis_type}_final_report.html"
     params: config = "config.json",
             paired = paired,
@@ -45,7 +46,9 @@ def DE_computation_input(wildcards):
     input["sqlite"] = expand("{ref_dir}/annot/{ref}.sqlite.gz",ref_dir=reference_directory,ref=config["reference"])[0]
     if wildcards.analysis_type == "feature_count":
         input["expression_tab"] = "results/analysis_{analysis_type}_table/complete.{analysis_type}.tsv"
-    if wildcards.analysis_type == "RSEM":
+    # if wildcards.analysis_type == "RSEM":
+    #     input["expression_tab"] = "results/analysis_{analysis_type}_table/complete.{analysis_type}.RData"
+    else:
         input["expression_tab"] = "results/analysis_{analysis_type}_table/complete.{analysis_type}.RData"
     return input
 
@@ -70,6 +73,24 @@ rule analysis_RSEM_table:
     log:    "logs/all_samples/complete.RSEM.log"
     conda:  "../wrappers/analysis_RSEM_table/env.yaml"
     script: "../wrappers/analysis_RSEM_table/script.py"
+
+rule analysis_salmon_table:
+    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}.salmon.sf",sample=sample_tab.sample_name),
+    output: salmon = "results/analysis_salmon_table/complete.salmon.RData"
+    params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
+            tx2gene = expand("{ref_dir}/index/transcript_gene.txt", ref_dir=reference_directory)[0]
+    log:    "logs/all_samples/complete.salmon.log"
+    conda:  "../wrappers/analysis_salmon_table/env.yaml"
+    script: "../wrappers/analysis_salmon_table/script.py"
+
+rule analysis_kallisto_table:
+    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.tsv",sample=sample_tab.sample_name),
+    output: kallisto = "results/analysis_kallisto_table/complete.kallisto.RData"
+    params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
+            tx2gene = expand("{ref_dir}/index/transcript_gene.txt",ref_dir=reference_directory)[0]
+    log:    "logs/all_samples/complete.kallisto.log"
+    conda:  "../wrappers/analysis_kallisto_table/env.yaml"
+    script: "../wrappers/analysis_kallisto_table/script.py"
 
 rule analysis_feature_count_table:
     input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
