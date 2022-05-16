@@ -1386,7 +1386,7 @@ run_all <- function(args){
     theme(legend.position="bottom") +
     labs(color = "")
 
-  ggsave(pdens, "normalized_gene_expression_check.pdf", units = "in", width = 7, height = 7, dpi=200)
+  ggsave("normalized_gene_expression_check.pdf", pdens, units = "in", width = 7, height = 7, dpi=200)
 
   # Plot BCV plot
   pdf(file="BCV_plot.pdf")
