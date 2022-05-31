@@ -386,7 +386,7 @@ run_all <- function(args){
   allcountsum <- rbind(rawcountsum,normcountsum)
   fwrite(allcountsum,"pre_post_norm_counts.tsv", sep="\t")
 
-  # library(cowplot)
+  library(cowplot)
   # rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
   #   geom_bar(stat = "identity", width = 0.8)+
   #   scale_fill_manual(values = unique(cond_colours))+
