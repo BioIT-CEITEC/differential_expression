@@ -65,12 +65,12 @@ run_all <- function(args){
 
   #create sample description tab
   if(use_tag_to_pair_samples == T){
-    samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = replicate)]
+    samples_desc <- config_tab[,list(sample = full_name, condition, replicate, patient = replicate)]
   } else {
     if(length(unique(config_tab$donor)) > 1){
-      samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = donor)]
+      samples_desc <- config_tab[,list(sample = full_name, condition, replicate, patient = donor)]
     } else {
-      samples_desc <- config_tab[,list(sample = full_name,name = full_name,condition,patient = info)]
+      samples_desc <- config_tab[,list(sample = full_name, condition, replicate, patient = info)]
     }
   }
   samples_desc <- unique(samples_desc)
@@ -381,28 +381,33 @@ run_all <- function(args){
   normcountsum <- melt(normcountsum, id.vars = c("Sample"))
   normcountsum <- normcountsum[, .(Sample, condition=conds, value)]
 
+  rawcountsum$type <- "Raw counts"
+  normcountsum$type <- "Normalised counts"
+  allcountsum <- rbind(rawcountsum,normcountsum)
+  fwrite(allcountsum,"pre_post_norm_counts.tsv", sep="\t")
+
   library(cowplot)
-  rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
-    geom_bar(stat = "identity", width = 0.8)+
-    scale_fill_manual(values = unique(cond_colours))+
-    theme_bw() +
-    ylab("") +
-    xlab("") +
-    ggtitle("Pre Normalised Counts") +
-    theme(axis.text.x = element_text(angle = 90))+
-    theme(plot.title = element_text(face="bold"))
+  # rcs <- ggplot(rawcountsum, aes(Sample, value, fill=condition))+
+  #   geom_bar(stat = "identity", width = 0.8)+
+  #   scale_fill_manual(values = unique(cond_colours))+
+  #   theme_bw() +
+  #   ylab("") +
+  #   xlab("") +
+  #   ggtitle("Pre Normalised Counts") +
+  #   theme(axis.text.x = element_text(angle = 90))+
+  #   theme(plot.title = element_text(face="bold"))
+  #
+  # ncs <- ggplot(normcountsum, aes(Sample, value, fill=condition))+
+  #   geom_bar(stat = "identity", width = 0.8)+
+  #   scale_fill_manual(values = unique(cond_colours))+
+  #   theme_bw() +
+  #   ylab("") +
+  #   xlab("") +
+  #   ggtitle("Post Normalised Counts") +
+  #   theme(axis.text.x = element_text(angle = 90))+
+  #   theme(plot.title = element_text(face="bold"))
 
-  ncs <- ggplot(normcountsum, aes(Sample, value, fill=condition))+
-    geom_bar(stat = "identity", width = 0.8)+
-    scale_fill_manual(values = unique(cond_colours))+
-    theme_bw() +
-    ylab("") +
-    xlab("") +
-    ggtitle("Post Normalised Counts") +
-    theme(axis.text.x = element_text(angle = 90))+
-    theme(plot.title = element_text(face="bold"))
-
-  rcs_ncs <- plot_grid(rcs,ncs,nrow=2)
+  # rcs_ncs <- plot_grid(rcs,ncs,nrow=2)
 
   # now add the title
   if(condition_design == "all"){
@@ -411,25 +416,36 @@ run_all <- function(args){
     count.title <- paste0(condsToCompare[2]," vs ",condsToCompare[1])
   }
 
+  rcs_ncs <- ggplot(allcountsum, aes(Sample, value, fill=condition))+
+    geom_bar(stat = "identity", width = 0.8)+
+    scale_fill_manual(values = unique(cond_colours))+
+    theme_bw() +
+    ylab("") +
+    xlab("") +
+    facet_grid(factor(type, levels=c("Raw counts","Normalised counts")) ~ .) +
+    ggtitle(paste0("Pre & Post Normalised Counts\n",count.title)) +
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(plot.title = element_text(face="bold"))
 
-  title <- ggdraw() +
-    draw_label(count.title,
-      fontface = 'bold',
-      x = 0,
-      hjust = 0
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 7)
-    )
 
-  # rel_heights values control vertical title margins
-  title_rcs_ncs <- plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
+  # title <- ggdraw() +
+  #   draw_label(count.title,
+  #     fontface = 'bold',
+  #     x = 0,
+  #     hjust = 0
+  #   ) +
+  #   theme(
+  #     # add margin on the left of the drawing canvas,
+  #     # so title is aligned with left edge of first plot
+  #     plot.margin = margin(0, 0, 0, 7)
+  #   )
+  #
+  # # rel_heights values control vertical title margins
+  # title_rcs_ncs <- plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
 
-  ggsave(filename = "pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
-  ggsave(filename = "pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
-  ggsave(filename = "pre_post_norm_counts.pdf", title_rcs_ncs, width = 7, height = 7, device = "pdf")
+  ggsave(filename = "pre_post_norm_counts.png", rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
+  ggsave(filename = "pre_post_norm_counts.svg", rcs_ncs, width = 7, height = 7, device = "svg")
+  ggsave(filename = "pre_post_norm_counts.pdf", rcs_ncs, width = 7, height = 7, device = "pdf")
 
   # Heatmaps
   library("gplots")
@@ -559,7 +575,7 @@ run_all <- function(args){
     ggtitle(pca.title)
 
   pca1S <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca$sample))
-  pca1P <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca$sample))
+  pca1P <- pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = replicate), color="black", max.overlaps = length(pca$sample))
 
   ggsave(filename = "sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -580,7 +596,7 @@ run_all <- function(args){
     xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
     ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
-    ggrepel::geom_text_repel(aes(PC1, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    ggrepel::geom_text_repel(aes(PC1, PC3, label = replicate), color="black", max.overlaps = length(pca$sample)) +
     theme(legend.position = "none") +
     ggtitle(pca.title)
 
@@ -596,7 +612,7 @@ run_all <- function(args){
     xlab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
     ylab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
     theme(plot.title = element_text(face="bold")) +
-    ggrepel::geom_text_repel(aes(PC2, PC3, label = patient), color="black", max.overlaps = length(pca$sample)) +
+    ggrepel::geom_text_repel(aes(PC2, PC3, label = replicate), color="black", max.overlaps = length(pca$sample)) +
     theme(legend.position = "none") +
     ggtitle(pca.title)
 
@@ -619,6 +635,7 @@ run_all <- function(args){
   pca3D <- pca3D %>% layout( title = list(text=pca.title, size = 10))
 
   htmlwidgets::saveWidget(widget=pca3D ,"sample_to_sample_PCA_3D.html")
+  fwrite(pca, "sample_to_sample_PCA.tsv", sep="\t")
 
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(PAIRED == T){
@@ -660,7 +677,7 @@ run_all <- function(args){
       ggtitle(pca_batch.title)
 
     pca1_batchS <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = sample), color="black", max.overlaps = length(pca_batch$patient))
-    pca1_batchP <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pca_batch$patient))
+    pca1_batchP <- pca1_batch + ggrepel::geom_text_repel(aes(PC1, PC2, label = replicate), color="black", max.overlaps = length(pca_batch$patient))
 
     ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -680,6 +697,7 @@ run_all <- function(args){
     pca3D_batch <- pca3D_batch %>% layout( title = list(text=pca_batch.title, size = 10))
 
     htmlwidgets::saveWidget(widget=pca3D_batch ,"sample_to_sample_PCA_3D_batch.html")
+    fwrite(pca_batch, "sample_to_sample_PCA_batch.tsv", sep="\t")
 
 
     #pcaData2_batch <- plotPCA(vsd_batch, intgroup=c("condition", "patient"), returnData=TRUE)
