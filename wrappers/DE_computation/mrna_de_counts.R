@@ -904,7 +904,7 @@ run_all <- function(args){
   library("ggplot2")
   library("ggrepel")
   resForPlot<-as.data.frame(res)
-  resForPlot$Gene<-parsedEnsembl[rownames(res), "gene_name"]
+  resForPlot$Gene<-substr(parsedEnsembl[rownames(res), "gene_name"],1,20)
   results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
   volkan <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
@@ -1008,7 +1008,7 @@ run_all <- function(args){
   # library(ggplot2)
   # library(ggrepel)
   resForPlot<-as.data.frame(resNoFil)
-  resForPlot$Gene<-parsedEnsembl[rownames(resNoFil), "gene_name"]
+  resForPlot$Gene<-substr(parsedEnsembl[rownames(resNoFil), "gene_name"],1,20)
   results <- mutate(resForPlot, sig=ifelse(resForPlot$padj<P_THRESHOLD, paste0("padj<", P_THRESHOLD), "Not Sig"))
   volkan_nofilt <- ggplot(results, aes(log2FoldChange, -log10(padj))) +
     geom_point(aes(col=sig), size=0.5) +
