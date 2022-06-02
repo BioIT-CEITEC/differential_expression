@@ -1082,7 +1082,8 @@ run_all <- function(args){
   }
 
   log2.norm.counts<-assay(nt)[select,,drop = F]
-  rownames(log2.norm.counts)<-parsedEnsembl[rownames(log2.norm.counts), "gene_name"]
+  # rownames(log2.norm.counts)<-parsedEnsembl[rownames(log2.norm.counts), "gene_name"]
+  rownames(log2.norm.counts)<-substr(parsedEnsembl[rownames(log2.norm.counts), "gene_name"],1,20)
   log2.norm.counts<-log2.norm.counts[order(rowMeans(log2.norm.counts)),]
 
   if(PAIRED==T){
