@@ -5,7 +5,8 @@
     "label":"Differential expression",
     "type":"differential_expression",
     "inputs":[
-      "qc_reports/{sample}/*/{sample}.*.*"
+      "qc_reports/{sample}/*/{sample}.*.*",
+      "qc_reports/{sample}/salmon/*/{sample}.*.*"
     ],
     "outputs":[
       "results/*",
@@ -29,6 +30,8 @@
     "feature_count",
     "RSEM",
     "salmon",
+    "salmon_map",
+    "salmon_align",
     "kallisto"
   ],
   "gui_params" : {
