@@ -76,7 +76,7 @@ rule analysis_RSEM_table:
 
 rule analysis_salmon_map_table:
     input:  salmon = expand("qc_reports/{sample}/salmon/{sample}_map/{sample}.salmon_map.sf",sample=sample_tab.sample_name),
-    output: salmon = "results/analysis_salmon_table/complete.salmon_map.RData"
+    output: salmon = "results/analysis_salmon_map_table/complete.salmon_map.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
             tx2gene = expand("{ref_dir}/index/transcript_gene.txt", ref_dir=reference_directory)[0]
     log:    "logs/all_samples/complete.salmon_map.log"
@@ -85,7 +85,7 @@ rule analysis_salmon_map_table:
 
 rule analysis_salmon_aln_table:
     input:  salmon = expand("qc_reports/{sample}/salmon/{sample}_aln/{sample}.salmon_aln.sf",sample=sample_tab.sample_name),
-    output: salmon = "results/analysis_salmon_table/complete.salmon_aln.RData"
+    output: salmon = "results/analysis_salmon_aln_table/complete.salmon_aln.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
             tx2gene = expand("{ref_dir}/index/transcript_gene.txt", ref_dir=reference_directory)[0]
     log:    "logs/all_samples/complete.salmon_aln.log"
