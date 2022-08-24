@@ -74,12 +74,21 @@ rule analysis_RSEM_table:
     conda:  "../wrappers/analysis_RSEM_table/env.yaml"
     script: "../wrappers/analysis_RSEM_table/script.py"
 
-rule analysis_salmon_table:
-    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}.salmon.sf",sample=sample_tab.sample_name),
-    output: salmon = "results/analysis_salmon_table/complete.salmon.RData"
+rule analysis_salmon_map_table:
+    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}_map/{sample}.salmon_map.sf",sample=sample_tab.sample_name),
+    output: salmon = "results/analysis_salmon_map_table/complete.salmon_map.RData"
     params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
             tx2gene = expand("{ref_dir}/index/transcript_gene.txt", ref_dir=reference_directory)[0]
-    log:    "logs/all_samples/complete.salmon.log"
+    log:    "logs/all_samples/complete.salmon_map.log"
+    conda:  "../wrappers/analysis_salmon_table/env.yaml"
+    script: "../wrappers/analysis_salmon_table/script.py"
+
+rule analysis_salmon_aln_table:
+    input:  salmon = expand("qc_reports/{sample}/salmon/{sample}_aln/{sample}.salmon_aln.sf",sample=sample_tab.sample_name),
+    output: salmon = "results/analysis_salmon_aln_table/complete.salmon_aln.RData"
+    params: ref_from_trans_assembly = config["ref_from_trans_assembly"],
+            tx2gene = expand("{ref_dir}/index/transcript_gene.txt", ref_dir=reference_directory)[0]
+    log:    "logs/all_samples/complete.salmon_aln.log"
     conda:  "../wrappers/analysis_salmon_table/env.yaml"
     script: "../wrappers/analysis_salmon_table/script.py"
 

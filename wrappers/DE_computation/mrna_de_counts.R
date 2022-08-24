@@ -1253,12 +1253,12 @@ run_all <- function(args){
   # 	lrt_tgw<-glmLRT(fit_tgw, contrast=my.contrasts[, "contrast"]) # If we have 3 conditions and want to compare 3 vs 1 we set contrast=c(0, -1, 1), if we want to compare 3 vs 1 or 2 vs 1 we just set coef=3 or coef=2, respectively; some more examples of contrast https://www.biostars.org/p/110861/
   # }
   ### Replacement of coef and contrast, should do the same
-  if(!length(grep(paste0("condition", condsToCompare[1], "\\b"), colnames(fit_tgw$design)))){# If I cannot find condsToCompare[1] (usually intercept) set contrast as 1 for condsToCompare2
-    cond_label <<- paste0(colnames(fit_tgw$design)[grep(paste0("condition", condsToCompare[2], "\\b"), colnames(fit_tgw$design))])
+  if(!length(which(colnames(fit_tgw$design) == paste0("condition", condsToCompare[1])))){ # If I cannot find condsToCompare[1] (usually intercept) set contrast as 1 for condsToCompare2
+    cond_label <<- paste0(colnames(fit_tgw$design)[which(colnames(fit_tgw$design) == paste0("condition", condsToCompare[2]))])
     my.contrasts <- makeContrasts(postvspre = cond_label, levels=fit_tgw$design) # https://stackoverflow.com/questions/26813667/how-to-use-grep-to-find-exact-match
     # Should create contrasts; if we have intercept and we want to compare coef=2 it should be the same as contrast=c(0, -1, 0) but it might be misunderstood because there is actually no contrast https://www.biostars.org/p/102036/
   }else{ # Else make proper contrast
-    cond_label <<- paste0(colnames(fit_tgw$design)[grep(paste0("condition", condsToCompare[2], "\\b"), colnames(fit_tgw$design))], "-", colnames(fit_tgw$design)[grep(paste0("condition", condsToCompare[1], "\\b"), colnames(fit_tgw$design))])
+    cond_label <<- paste0(colnames(fit_tgw$design)[which(colnames(fit_tgw$design) == paste0("condition", condsToCompare[2]))], "-", colnames(fit_tgw$design)[which(colnames(fit_tgw$design) == paste0("condition", condsToCompare[1]))])
     # Should create contrasts; if we have intercept and we want to compare coef=2 it should be the same as contrast=c(0, -1, 0) but it might be misunderstood because there is actually no contrast https://www.biostars.org/p/102036/
     my.contrasts <- makeContrasts(postvspre = cond_label, levels=fit_tgw$design) # https://stackoverflow.com/questions/26813667/how-to-use-grep-to-find-exact-match
   }
