@@ -5,8 +5,7 @@
     "label":"Differential expression",
     "type":"differential_expression",
     "inputs":[
-      "qc_reports/{sample}/*/{sample}.*.*",
-      "qc_reports/{sample}/salmon/*/{sample}.*.*"
+      "qc_reports/{sample}/*/{sample}.*.*"
     ],
     "outputs":[
       "results/*",
