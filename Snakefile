@@ -6,7 +6,8 @@ import re
 
 min_version("5.18.0")
 
-GLOBAL_REF_PATH = "/mnt/references/"
+configfile: "config.json"
+GLOBAL_REF_PATH = config["globalResources"]
 
 # setting organism from reference
 f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference.json"),)

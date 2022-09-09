@@ -1,0 +1,104 @@
+
+read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,paired_samples,use_custom_batch_effect_grouping){
+  experiment_design <- fread(experiment_design_file)
+  if(paired_samples){
+    if(use_custom_batch_effect_grouping){
+      experiment_design[,patient := batch_group]
+    } else {
+      experiment_design[,patient := replicate]
+    }
+  } else {
+    experiment_design[,patient := paste0("pat",seq_along(sample_name))]
+  }
+  
+  # Make syntactically valid names using make.names
+  for (j in names(experiment_design)[sapply(experiment_design,class) == "character"]) set(experiment_design, j = j, value = make.names(experiment_design[[j]]))
+  comparison_vec <- make.names(comparison_vec)
+  
+  condition_to_compare_vec <- unique(unlist(strsplit(comparison_vec,split= "_vs_")))
+  experiment_design[,condition_order := match(experiment_design$condition,condition_to_compare_vec)]
+  setorder(experiment_design,condition_order,patient,na.last = T)
+  experiment_design[,condition_order := NULL]
+  experiment_design[,condition := factor(condition,levels = unique(condition))]
+  experiment_design[,patient := factor(patient,levels = unique(patient))]
+  
+  return(list(experiment_design,comparison_vec,condition_to_compare_vec))
+}
+
+read_and_prepare_count_data <- function(counts_file,experiment_design,organism,analysis_type){
+  
+  # ensembl = useEnsembl(biomart="ensembl", dataset=paste0(gsub("^(.).*_","\\1",organism),"_gene_ensembl"))
+  # ensembl_gene_tab <- as.data.table(getBM(attributes=c('ensembl_gene_id',"external_gene_name",'gene_biotype'),mart = ensembl))
+  ensembl_gene_tab <- fread("./ensembl_gene_tab.tsv")
+  setnames(ensembl_gene_tab,c("Geneid","Gene_name","biotype"))
+  ensembl_gene_tab <- ensembl_gene_tab[!is.na(biotype)]       
+  ensembl_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
+  ensembl_gene_tab[,duplicated := .N,by = "Gene_name"]
+  ensembl_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
+  ensembl_gene_tab[,duplicated := NULL]
+  setnames(ensembl_gene_tab,"Gene_name","Feature_name")
+  setkey(ensembl_gene_tab,"Geneid")
+  
+  if(analysis_type == "feature_count"){
+    txi <- NULL
+    
+    count_dt <- fread(counts_file)
+    setnames(count_dt,make.names(colnames(count_dt)))
+    count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
+    
+    
+  } else {
+    # load(counts_file)
+    load("DE_RSEM/complete_RSEM_table.RData")
+    colnames(txi$counts) <- make.names(colnames(txi$counts))
+    colnames(txi$length) <- make.names(colnames(txi$length))
+    colnames(txi$abundance) <- make.names(colnames(txi$abundance))
+    
+    # Remove "gene:" or "transcript": added by RSEM - doesn't go well when merged with Ensembl or other annotation-based information
+    rownames(txi$abundance) <- gsub("^gene:", "", rownames(txi$abundance))
+    rownames(txi$counts) <- gsub("^gene:", "", rownames(txi$counts))
+    rownames(txi$length) <- gsub("^gene:", "", rownames(txi$length))
+    rownames(txi$abundance) <- gsub("^transcript:","", rownames(txi$abundance))
+    rownames(txi$counts) <- gsub("^transcript:", "", rownames(txi$counts))
+    rownames(txi$length) <- gsub("^transcript:", "", rownames(txi$length))
+    
+    # Keep only non-zero expressed genes that are in ensembl DB
+    #   If gene/isoform has only counts 0.x it will be kept in the output but will have 0 counts in final DE tables
+    keep<-rowSums(txi$counts)>0 & rownames(txi$counts) %in% ensembl_gene_tab$Geneid
+    
+    txi$abundance<-txi$abundance[keep,]
+    txi$counts<-txi$counts[keep,]
+    txi$length<-txi$length[keep,]
+    
+    #set correct col order
+    txi$counts<-txi$counts[,match(experiment_design$sample_name, colnames(txi$counts))]
+    txi$abundance<-txi$abundance[,match(experiment_design$sample_name, colnames(txi$abundance))]
+    txi$length<-txi$length[,match(experiment_design$sample_name, colnames(txi$length))]
+    
+    count_dt<-as.data.table(txi$counts,keep.rownames = T)
+    setnames(count_dt,"rn","Geneid")
+    
+    #rename to Gene names from Ensemble
+    rownames(txi$abundance) <- ensembl_gene_tab[rownames(txi$abundance)]$Feature_name
+    rownames(txi$counts) <- ensembl_gene_tab[rownames(txi$counts)]$Feature_name
+    rownames(txi$length) <- ensembl_gene_tab[rownames(txi$length)]$Feature_name
+    
+    txi$length[txi$length == 0] <- 1 # If gene has length 0 replace it with 1 to avoid error later, might be source of bias and/or error; https://support.bioconductor.org/p/84304/
+    
+    # cts <- txi$counts
+    # anyNA(cts) # Should be false
+    # normMat <- txi$length
+    # normMat <- as.data.frame(normMat/exp(rowMeans(log(normMat))))
+  }
+  
+  
+  count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
+  count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+  count_dt <- merge(ensembl_gene_tab,count_dt,by = "Geneid")
+  setnames(count_dt,"Geneid","Ensemble_GeneId")
+  count_dt[,sum_count := sum(count),by = Feature_name]
+  count_dt <- count_dt[sum_count > 0,]
+  setkey(count_dt,Feature_name,sample_name)
+  
+  return(list(count_dt,txi))
+}

@@ -15,11 +15,10 @@ f.close()
 snakemake.params.sample_tab.to_csv(snakemake.params.experiment_design, index=False,sep="\t")
 
 
-command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/mrna_de_counts.R "+\
+command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/DE_computation_main.R "+\
             snakemake.params.experiment_design + " " +\
             snakemake.input.count_tab + " " +\
             ",".join(snakemake.params.comparison_dir_list) + " " +\
-            ",".join(snakemake.params.condition_list) + " " +\
             snakemake.params.organism + " " +\
             snakemake.wildcards.analysis_type + " " +\
             str(snakemake.params.paired_replicates) + " " +\
@@ -28,7 +27,7 @@ command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/mrna_de_counts
             str(snakemake.params.pvalue_for_viz) + " " +\
             str(snakemake.params.fold_change_threshold) + " " +\
             str(snakemake.params.named_in_viz) + " " +\
-            str(snakemake.params.remove_genes_with_mean_read_count_threshold) +\
+            str(snakemake.params.remove_genes_with_mean_read_count_threshold) + " " +\
             " >> " + log_filename + " 2>&1"
 
 f = open(log_filename, 'a+')

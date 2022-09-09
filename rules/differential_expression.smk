@@ -34,10 +34,10 @@ rule DE_computation:
             keep_not_compared_samples_for_normalization = config["keep_not_compared_samples_for_normalization"],
             normalize_data_per_comparison = config["normalize_data_per_comparison"],
             use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
-            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
             pvalue_for_viz= config["pvalue_for_viz"],
             fold_change_threshold= config["fold_change_threshold"],
-            named_in_viz= config["named_in_viz"]
+            named_in_viz= config["named_in_viz"],
+            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"]
     log:    "logs/DE/DE_{analysis_type}.log"
     conda:  "../wrappers/DE_computation/env.yaml"
     script: "../wrappers/DE_computation/script.py"
