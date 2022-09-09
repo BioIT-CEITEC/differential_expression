@@ -9,7 +9,9 @@ configfile: "config.json"
 configfile: "config.json"
 
 GLOBAL_REF_PATH = "/mnt/references/"
+GLOBAL_TMPD_PATH = "./tmp/"
 
+os.makedirs(GLOBAL_TMPD_PATH, exist_ok=True)
 
 if not "ref_from_trans_assembly" in config:
     config["ref_from_trans_assembly"] = "F"
