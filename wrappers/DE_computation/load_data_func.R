@@ -27,9 +27,9 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
 
 read_and_prepare_count_data <- function(counts_file,experiment_design,organism,analysis_type){
   
-  # ensembl = useEnsembl(biomart="ensembl", dataset=paste0(gsub("^(.).*_","\\1",organism),"_gene_ensembl"))
-  # ensembl_gene_tab <- as.data.table(getBM(attributes=c('ensembl_gene_id',"external_gene_name",'gene_biotype'),mart = ensembl))
-  ensembl_gene_tab <- fread("./ensembl_gene_tab.tsv")
+  ensembl <- useEnsembl(biomart="ensembl", dataset=paste0(gsub("^(.).*_","\\1",organism),"_gene_ensembl"))
+  ensembl_gene_tab <- as.data.table(getBM(attributes=c('ensembl_gene_id',"external_gene_name",'gene_biotype'),mart = ensembl))
+  # ensembl_gene_tab <- fread("./ensembl_gene_tab.tsv")
   setnames(ensembl_gene_tab,c("Geneid","Gene_name","biotype"))
   ensembl_gene_tab <- ensembl_gene_tab[!is.na(biotype)]       
   ensembl_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]

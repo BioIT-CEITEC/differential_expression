@@ -1,4 +1,3 @@
-
 ####################################################################################################
 ####################################################################################################
 #
@@ -35,9 +34,8 @@ library(svglite)
 library(ashr)
 library(plotly)
 library(htmlwidgets)
-library(Rtsne)
 
-script.dir <- dirname(sys.frame(1)$ofile)
+script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))
 
 source(paste0(script.dir,"/DESeq2_edgeR_overlap_func.R"))
 source(paste0(script.dir,"/DESeq2_func.R"))
