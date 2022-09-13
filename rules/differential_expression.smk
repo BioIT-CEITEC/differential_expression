@@ -24,7 +24,7 @@ def count_tab_input(wildcards):
 
 rule DE_computation:
     input:  count_tab = count_tab_input,
-    output: table = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list),
+    output: table = expand("DE_{{analysis_type}}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list),
 
     params: organism = config["organism"],
             paired_replicates = config["paired_replicates"],
