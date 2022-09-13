@@ -87,8 +87,7 @@ def input_all(wildcards):
     return input
 
 rule all:
-    input: expand("DE_{analysis_type}/final_report.html",analysis_type=selected_analysis_types)
-
+    input: tsv = expand("DE_{analysis_type}/{comparison}/DESeq2.tsv",analysis_type=selected_analysis_types,comparison=comparison_dir_list)
 
 ##### Modules #####
 

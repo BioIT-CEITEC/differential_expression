@@ -10,10 +10,6 @@
     "outputs":[
       "DE_*",
       "logs/*"
-    ],
-    "report_index": "results/{comparison}/{biotype}/edgeR.tsv",
-    "reports":[
-       "results/*"
     ]
   },
   "general_params": [
