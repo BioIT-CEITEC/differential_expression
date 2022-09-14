@@ -8,7 +8,7 @@
       "qc_reports/{sample}/*/{sample}.*.*"
     ],
     "outputs":[
-      "DE_*",
+      "logs",
       "final_report.html"
     ],
     "outputs_optional":[
