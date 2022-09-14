@@ -48,11 +48,9 @@ rule DE_computation:
 #     input['tsv'] = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list)
 #     return input
 
-#
-# rule DE_report:
-#     input: tsv = expand("DE_{{analysis_type}}/{comparison}/edgeR.tsv", comparison=comparison_dir_list)
-#     output: html = "DE_{analysis_type}/final_report.html"
-#     params: config = "config.json",
-#             count_type="{analysis_type}",
-#             contaminants="all",  ### přidat do configu!
-#     shell: "touch {output.html}"
+
+rule DE_report:
+    input: tsv = expand("DE_{analysis_type}/{comparison}/edgeR.tsv", comparison=comparison_dir_list,analysis_type=selected_analysis_types)
+    output: html = "final_report.html"
+    log:    "logs/DE/DE_report.log"
+    script: "../wrappers/DE_report/script.py"

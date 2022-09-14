@@ -9,7 +9,15 @@
     ],
     "outputs":[
       "DE_*",
-      "logs/*"
+      "final_report.html"
+    ],
+    "outputs_optional":[
+      "DE_RSEM",
+      "DE_feature_count"
+    ],
+    "report_index": "final_report.html",
+    "reports":[
+       "final_report.html"
     ]
   },
   "general_params": [
