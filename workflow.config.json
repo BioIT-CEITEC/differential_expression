@@ -28,7 +28,6 @@
     "ref_from_trans_assembly",
     "feature_count",
     "RSEM",
-    "salmon",
     "salmon_map",
     "salmon_align",
     "kallisto"
