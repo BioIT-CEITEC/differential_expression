@@ -40,8 +40,9 @@ prepare_colors_and_shapes <- function(experiment_design){
     num.conds = 3
   }
   experiment_design[,cond_colours := brewer.pal(num.conds, "Set1")[experiment_design$condition]]
-  cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
-  cond_shapes_plotly <- c( "circle","square","diamond","cross","x","circle-open","square-open","diamond-open" )
+  # cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
+  cond_shapes<-rep(c(16,15,18,3,4,1,0,5,17,2,6,8,11,12),4)
+  cond_shapes_plotly <- rep(c("circle","square","diamond","cross","x","circle-open","square-open","diamond-open"),4)
   experiment_design[,pat_shapes := cond_shapes[experiment_design$patient]]
   experiment_design[,pat_shapes_plotly := cond_shapes_plotly[experiment_design$patient]]
   
@@ -385,9 +386,9 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   
   ####################################################################################################
   
-  if(paired_samples){ 
-    fwrite(as.data.table(count_matrix_from_dt(count_dt,"vstcounts_batch")), file = "norm_counts_batch.tsv", sep = "\t", row.names = T)
-  }
+  # if(paired_samples){
+  #   fwrite(as.data.table(count_matrix_from_dt(count_dt,"vstcounts_batch")), file = "norm_counts_batch.tsv", sep = "\t", row.names = T)
+  # }
   
   setwd(orig_dir)
   
@@ -433,7 +434,8 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ sample_name,value.var = "rawcounts")
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
   comp_res <- merge.data.table(comp_res,rawcounts,by = "Feature_name")
-  
+
+
   # Quick check of DE genes
   tmpMatrix<-matrix(ncol=1, nrow=5)
   rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
@@ -469,7 +471,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   print(noquote(tmpMatrix_no_filt))
   sink()
   
-  comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
+  # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
   
   fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")

@@ -72,7 +72,7 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   
   #set output dir but remember where to return
   orig_dir <- getwd()
-  dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
+  # dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
   dir.create(paste0(output_dir,"/detail_results"),showWarnings = F,recursive = T)
   setwd(output_dir)
   
@@ -80,10 +80,9 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   experiment_design_dt <- unique(count_dt[,.(sample_name,condition,patient)])
   setorder(experiment_design_dt,condition,patient)
   
-  sink("detail_results/edgeR_design_control.txt") #save sample names to control with lib.sizes
-  print(subset(cbind(experiment_design_dt, d$samples), select=-c(group)))
-  sink()
-  
+  #save sample names to control with lib.sizes
+  fwrite(subset(cbind(experiment_design_dt, d$samples), select=-c(group)),"detail_results/edgeR_design_control.txt",sep = "\t")
+
   experiment_design_dt <- prepare_colors_and_shapes(experiment_design_dt)
   
   #set paired samples if more then one sample belongs to one patient(batch)

@@ -43,7 +43,7 @@ def get_comparison_dir_list(condition_list):
 
 ## create list of conditions
 if config['conditions_to_compare'] == "all":
-    condition_list = sorted(sample_tab.condition)
+    condition_list = sorted(sample_tab.condition.unique())
     condition_list_first = [condition for condition in condition_list if
                             re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
     condition_list_second = [condition for condition in condition_list if
