@@ -25,19 +25,19 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
   return(list(experiment_design,comparison_vec,condition_to_compare_vec))
 }
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,organism,analysis_type){
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type){
   
-  ensembl <- useEnsembl(biomart="ensembl", dataset=paste0(gsub("^(.).*_","\\1",organism),"_gene_ensembl"))
-  ensembl_gene_tab <- as.data.table(getBM(attributes=c('ensembl_gene_id',"external_gene_name",'gene_biotype'),mart = ensembl))
-  # ensembl_gene_tab <- fread("./ensembl_gene_tab.tsv")
-  setnames(ensembl_gene_tab,c("Geneid","Gene_name","biotype"))
-  ensembl_gene_tab <- ensembl_gene_tab[!is.na(biotype)]       
-  ensembl_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
-  ensembl_gene_tab[,duplicated := .N,by = "Gene_name"]
-  ensembl_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
-  ensembl_gene_tab[,duplicated := NULL]
-  setnames(ensembl_gene_tab,"Gene_name","Feature_name")
-  setkey(ensembl_gene_tab,"Geneid")
+  feat_type <- "gene"
+  annotate_by<- c("gene_id","gene_name", "gene_biotype")
+  gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
+  setnames(gtf_gene_tab,c("Geneid","Gene_name","biotype"))
+  gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]       
+  gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
+  gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
+  gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
+  gtf_gene_tab[,duplicated := NULL]
+  setnames(gtf_gene_tab,"Gene_name","Feature_name")
+  setkey(gtf_gene_tab,"Geneid")
   
   if(analysis_type == "feature_count"){
     txi <- NULL
@@ -94,8 +94,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,organism,a
   
   count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
   count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
-  count_dt <- merge(ensembl_gene_tab,count_dt,by = "Geneid")
-  setnames(count_dt,"Geneid","Ensemble_GeneId")
+  count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
+  setnames(count_dt,"Geneid","Ensembl_Id")
   count_dt[,sum_count := sum(count),by = Feature_name]
   count_dt <- count_dt[sum_count > 0,]
   setkey(count_dt,Feature_name,sample_name)

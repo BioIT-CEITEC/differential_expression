@@ -109,7 +109,7 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
 }
 
 create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt){
-
+  
   #set output dir but remember where to return
   orig_dir <- getwd()
   dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
@@ -166,7 +166,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   
   # now add the title
   count.title = get_title_from_design(experiment_design_dt,"","","All samples")
-
+  
   title <- ggdraw() +
     draw_label(count.title,
                fontface = 'bold',
@@ -191,11 +191,11 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   
   ####################################################################################################
   # Heatmaps
-
+  
   hm.log.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Log2)",connection = "\n")
   hm.vst.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (VST)",connection = "\n")
   hm.raw.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Raw Counts)",connection = "\n")
-
+  
   
   pdf(file="heatmaps_samples.pdf")
   heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
@@ -274,8 +274,8 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   ####################################################################################################
   
   
-
-
+  
+  
   get_pca_plot <- function(prcomp_data,experiment_design_dt,pca_title,comp_y_id = 1,comp_x_id = 2){
     PC1 = paste0("PC",comp_y_id)
     PC2 = paste0("PC",comp_x_id)
@@ -303,13 +303,13 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     # pca1P = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData$sample_name))
     return(pca1 + ggrepel::geom_text_repel(aes_string(PC1, PC2, label = "sample_name"), color="black", max.overlaps = length(pcaData$sample_name)))
   }
-
+  
   count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
   prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts"))
   count_dt[,max_vstcounts := NULL]
   pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)")
   
-  pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title,2,1)
+  pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
   
   ggsave(filename = "report_data/sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
   # ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -320,16 +320,18 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   ####################################################################################################
   # 3D PCA plot with plotly
   ####################################################################################################
-
+  
   pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
   setnames(pcaData,"rn","sample_name")
   pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
+  pcaData[,condition := as.character(condition)]
+  setorder(pcaData,condition)
   
   if(paired_samples){
-    fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),
-                 marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
+    fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),hoverinfo = "text",
+                   marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
   } else {
-    fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),
+    fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),hoverinfo = "text",
                    text = ~paste('Sample name:',sample_name,'<br>Condition:',condition))
   }
   fig <- fig %>% add_markers()
@@ -348,15 +350,15 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts_batch > 0],"vstcounts_batch"))
     count_dt[,max_vstcounts_batch := NULL]
     pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)","with a batch effect removed")
-   
-    pca1_batchS <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title,2,1)
+    
+    pca1_batchS <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
     
     ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     # ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
     
     ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
     # ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
-
+    
     ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device="pdf")
     
     
@@ -367,14 +369,12 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
     setnames(pcaData,"rn","sample_name")
     pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
+    pcaData[,condition := as.character(condition)]
+    setorder(pcaData,condition)
     
-    if(paired_samples){
-      fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),
+
+    fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),hoverinfo = "text",
                      marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
-    } else {
-      fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),
-                     text = ~paste('Sample name:',sample_name,'<br>Condition:',condition))
-    }
     fig <- fig %>% add_markers()
     fig <- fig %>% layout(title = pca_title,
                           scene = list(xaxis = list(title = paste0("PC1 - ",round(summary(prcomp_data)$importance[2,1] * 100,1),"% variance explained")),
@@ -406,27 +406,26 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   #create copy of dds not to change orig object
   dds <- copy(dds)
   
-  if(!any(resultsNames(dds) == paste0("condition_",condsToCompare[2],"_vs_",condsToCompare[1]))){
-    relevel_condition <- relevel(experiment_design$condition, condsToCompare[1])
+  if(!any(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))){
+    relevel_condition <- relevel(experiment_design$condition, condsToCompare[2])
     dds$condition <- relevel_condition
     dds <- nbinomWaldTest(dds)
   }
   
-  coef <- which(resultsNames(dds) == paste0("condition_",condsToCompare[2],"_vs_",condsToCompare[1]))
+  coef <- which(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))
   
   deseq_obj_comp_res <- lfcShrink(dds, coef=coef, type="ashr", lfcThreshold=lfc_threshold)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
-  deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[2], condsToCompare[1]), independentFiltering=F, cooksCutoff=F)
+  deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
   deseq_obj_comp_res_no_filt <- lfcShrink(dds, type="ashr", lfcThreshold=lfc_threshold,res = deseq_obj_comp_res_no_filt)
   comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
   setnames(comp_res,"rn","Feature_name")
-  setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
+  comp_res <- merge(unique(count_dt[,.(Feature_name,Ensembl_Id,biotype)]),comp_res,by = "Feature_name")
   comp_res[,significant_DE := F]
   comp_res[(abs_log2FoldChange >= lfc_threshold) & (padj < p_value_threshold) & !is.na(padj),significant_DE := T]
   comp_res[,no_filter_significant_DE := F]
   comp_res[(no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
-  
   
   normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ sample_name,value.var = "normcounts")
   setnames(normcounts,names(normcounts)[-1],paste0(names(normcounts)[-1],"_normCounts"))
@@ -434,8 +433,8 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ sample_name,value.var = "rawcounts")
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
   comp_res <- merge.data.table(comp_res,rawcounts,by = "Feature_name")
-
-
+  
+  
   # Quick check of DE genes
   tmpMatrix<-matrix(ncol=1, nrow=5)
   rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
@@ -457,7 +456,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   tmpMatrix_no_filt[,1]<-paste(": ", tmpMatrix_no_filt[,1], ", ",round(tmpMatrix_no_filt[,1]/((tmpMatrix_no_filt[1,1]/100)), 1), "%", sep="")
   
   sink("DESeq2_de_genes_summary.txt")
-  cat(paste0("DESeq2 results summary for comparison of conditions ",condsToCompare[2]," to ",condsToCompare[1],"\n"))
+  cat(paste0("DESeq2 results summary for comparison of conditions ",condsToCompare[1]," to ",condsToCompare[2],"\n"))
   cat(paste0("\nNumber of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off\n"))
   summary(deseq_obj_comp_res, alpha=p_value_threshold)
   cat(paste0("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), "\n"))
@@ -472,8 +471,9 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   sink()
   
   # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
-  
-  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
+  setcolorder(comp_res,c("Ensembl_Id","baseMean","log2FoldChange","lfcSE","pvalue","padj","significant_DE","Feature_name","biotype"))
+  setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
+  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")
   
   setwd(orig_dir)
@@ -518,26 +518,26 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
       geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
-      ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep="")) +
-      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") + 
-      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") + 
+      ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
+      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") + 
+      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") + 
       theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
     
-    pdf(file=paste("volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],".pdf", sep=""))
+    pdf(file=paste("volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".pdf", sep=""))
     print(p)
     dev.off()
     
-    png(file=paste("report_data/volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
+    png(file=paste("report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(p)
     dev.off()
     
-    svg(file=paste("report_data/volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],".svg", sep=""),width = 7, height = 7)
+    svg(file=paste("report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".svg", sep=""),width = 7, height = 7)
     print(p)
     dev.off()
     
     #ma plot
     
-    ma <- ggmaplot(comp_res, main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
+    ma <- ggmaplot(comp_res, main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
                    fdr = p_value_threshold, fc = lfc_threshold, size = 0.4,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
@@ -548,15 +548,15 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
                    ggtheme = ggplot2::theme_minimal())+
       theme(plot.title = element_text(hjust = 0.5))
     
-    pdf(file=paste("MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],".pdf", sep=""))
+    pdf(file=paste("MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".pdf", sep=""))
     print(ma)
     dev.off()
     
-    png(file=paste("report_data/MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
+    png(file=paste("report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(ma)
     dev.off()
     
-    svg(file=paste("report_data/MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],".svg", sep=""),width = 7, height = 7)
+    svg(file=paste("report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".svg", sep=""),width = 7, height = 7)
     print(ma)
     dev.off()
     
@@ -575,26 +575,26 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
       geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
-      ggtitle(paste("Volcanoplot ",condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes", sep="")) +
+      ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
       annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") + 
       annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") + 
       theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
     
-    pdf(file=paste("detail_results/volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.pdf", sep=""))
+    pdf(file=paste("detail_results/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.pdf", sep=""))
     print(p)
     dev.off()
     
-    png(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
+    png(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(p)
     dev.off()
     
-    svg(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.svg", sep=""),width = 7, height = 7)
+    svg(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.svg", sep=""),width = 7, height = 7)
     print(p)
     dev.off()
     
     #ma plot
     
-    ma <- ggmaplot(comp_res[,.(Feature_name,baseMean,padj = no_filter_padj,log2FoldChange = no_filter_log2FoldChange)], main =  paste0("MA plot ", condsToCompare[2], " vs ", condsToCompare[1], " top ", TOP, " genes"),
+    ma <- ggmaplot(comp_res[,.(Feature_name,baseMean,padj = no_filter_padj,log2FoldChange = no_filter_log2FoldChange)], main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
                    fdr = p_value_threshold, fc = lfc_threshold, size = 0.4,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
@@ -605,15 +605,15 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
                    ggtheme = ggplot2::theme_minimal())+
       theme(plot.title = element_text(hjust = 0.5))
     
-    pdf(file=paste("detail_results/MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.pdf", sep=""))
+    pdf(file=paste("detail_results/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.pdf", sep=""))
     print(ma)
     dev.off()
     
-    png(file=paste("detail_results/report_data/MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
+    png(file=paste("detail_results/report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(ma)
     dev.off()
     
-    svg(file=paste("detail_results/report_data/MAplot_", condsToCompare[2], "_vs_", condsToCompare[1],"_noIndFilt.svg", sep=""),width = 7, height = 7)
+    svg(file=paste("detail_results/report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.svg", sep=""),width = 7, height = 7)
     print(ma)
     dev.off()
     
@@ -635,37 +635,37 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
     rownames(df)<-df$sample_name
     df$sample_name <- NULL
     log2.norm.counts<-log2.norm.counts[rev(order(rowMeans(log2.norm.counts))),]
-  
-  
+    
+    
     #pdf(file="heatmap_selected_orderBaseMeanCluster.pdf", onefile=FALSE, height= 2 + (TOP/2))
     pdf(file="heatmap_selected_orderBaseMeanCluster.pdf", onefile=FALSE, height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
     png(filename = "report_data/heatmap_selected_orderBaseMeanCluster.png", res = 200, units = "in", height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
     svg(filename = "report_data/heatmap_selected_orderBaseMeanCluster.svg", height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=TRUE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
     pdf(file="heatmap_selected_orderBaseMean.pdf", onefile=FALSE, height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=FALSE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
     png(filename = "report_data/heatmap_selected_orderBaseMean.png", res = 200, units = "in", height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
     svg(filename = "report_data/heatmap_selected_orderBaseMean.svg", height= 7, width = 7)
     pheatmap(log2.norm.counts, cluster_rows=TRUE, show_rownames=TRUE, cluster_cols=FALSE, annotation_col=df,
-             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[2], " vs ", condsToCompare[1], sep=""))
+             main = paste("Top ", TOP, " significantly DE genes (log2norm)\n", condsToCompare[1], " vs ", condsToCompare[2], sep=""))
     dev.off()
     
   }
@@ -688,7 +688,7 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
   
   # Write all normalized counts
   # fwrite(dcast.data.table(count_dt[condition %in% condsToCompare],Feature_name ~ sample_name,value.var = "normcounts"), file="detail_results/norm_counts.tsv", sep="\t")
-
+  
   # # Make gene background/universe
   # background<-as.data.frame(res2[, "gene_name"])
   # colnames(background)<-"gene_name"

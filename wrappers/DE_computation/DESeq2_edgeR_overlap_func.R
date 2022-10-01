@@ -3,14 +3,14 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
   setwd(output_dir)
 
-  ####################################################################################################
-  # Overlap between DESeq2 and edgeR and Venn diagrams
-  # http://www.ats.ucla.edu/stat/r/faq/venn.htm
-
-  vennTable <- merge(comp_res[,.(Feature_name,DESeq2 = significant_DE * sign(log2FoldChange),DESeq2_padj = padj,DESeq2_log2FoldChange = log2FoldChange)],
-        edgeR_comp_res[,.(Feature_name,edgeR = significant_DE * sign(log2FoldChange),edgeR_padj = padj,edgeR_log2FoldChange = log2FoldChange)],by = "Feature_name")
   
-  TestResultMatrix <- as.matrix(vennTable[,c(2,3)],rownames = vennTable$Feature_name)
+  
+  vennTable <- merge(comp_res[,.(Feature_name,DESeq2 = significant_DE * sign(log2FoldChange),DESeq2_padj = padj,DESeq2_log2FoldChange = log2FoldChange)],
+                        edgeR_comp_res[,.(Feature_name,edgeR = significant_DE * sign(log2FoldChange),edgeR_padj = padj,edgeR_log2FoldChange = log2FoldChange)],by = "Feature_name")
+  
+   
+  TestResultMatrix <- as.matrix(vennTable[,c("DESeq2","edgeR")],rownames = vennTable$Feature_name)
+  TestResultMatrix <- abs(TestResultMatrix)
   
   pdf(file="overlap_DESeq2_edgeR_venn.pdf")
   par(oma=c(0,0,1,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
@@ -27,4 +27,55 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
 
   setwd(orig_dir)
 }
+
+# ####################################################################################################
+# # Overlap between DESeq2 and edgeR and Venn diagrams
+# # http://www.ats.ucla.edu/stat/r/faq/venn.htm
+# venn_list <- lapply(caller_types,function(x) var_tab[caller == x,paste(chrom,position,alternative,sep = "_")])
+# venn_raw <- venn.diagram(venn_list,NULL
+#                          ,imagetype = "tiff"
+#                          ,fill=c("red", "green","blue","yellow")[seq_along(caller_types)]
+#                          ,alpha=c(0.5,0.5,0.5,0.5)[seq_along(caller_types)]
+#                          ,cex = 1.5
+#                          ,cat.fontface=2
+#                          ,category.names=caller_types,main = "Variants all")
+# 
+# venn_raw_rel <- venn.diagram(venn_list,NULL,print.mode = "percent"
+#                              ,imagetype = "tiff"
+#                              ,fill=c("red", "green","blue","yellow")[seq_along(caller_types)]
+#                              ,alpha=c(0.5,0.5,0.5,0.5)[seq_along(caller_types)]
+#                              ,cex = 1.5
+#                              ,cat.fontface=2
+#                              ,category.names=caller_types,main = "Variants all relative")
+# 
+# 
+# venn_list_pass <- lapply(caller_types,function(x) var_tab[caller == x & is_pass == T,paste(chrom,position,alternative,sep = "_")])
+# venn_pass <- venn.diagram(venn_list_pass,NULL
+#                           ,imagetype = "tiff"
+#                           ,fill=c("red", "green","blue","yellow")[seq_along(caller_types)]
+#                           ,alpha=c(0.5,0.5,0.5,0.5)[seq_along(caller_types)]
+#                           ,cex = 1.5
+#                           ,cat.fontface=2
+#                           ,category.names=caller_types,main = "Variants pass")
+# 
+# venn_pass_rel <- venn.diagram(venn_list_pass,NULL,print.mode = "percent"
+#                               ,imagetype = "tiff"
+#                               ,fill=c("red", "green","blue","yellow")[seq_along(caller_types)]
+#                               ,alpha=c(0.5,0.5,0.5,0.5)[seq_along(caller_types)]
+#                               ,cex = 1.5
+#                               ,cat.fontface=2
+#                               ,category.names=caller_types,main = "Variants pass relative")
+# 
+# 
+# pdf(gsub(".tsv$",".variant_stats.pdf",output_file))
+# grid.draw(venn_raw)
+# grid.newpage()
+# grid.draw(venn_pass)
+# grid.newpage()
+# grid.draw(venn_raw_rel)
+# grid.newpage()
+# grid.draw(venn_pass_rel)
+# dev.off()
+# 
+# file.remove(list.files(".",pattern = "VennDiagram.*.log"))
 
