@@ -35,12 +35,7 @@ library(ashr)
 library(plotly)
 library(htmlwidgets)
 
-script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))
 
-source(paste0(script.dir,"/DESeq2_edgeR_overlap_func.R"))
-source(paste0(script.dir,"/DESeq2_func.R"))
-source(paste0(script.dir,"/edgeR_func.R"))
-source(paste0(script.dir,"/load_data_func.R"))
 
 
 run_all <- function(args){
@@ -49,7 +44,7 @@ run_all <- function(args){
   counts_file <- args[2]
   relative_output_dir <- dirname(experiment_design_file)
   comparison_vec <- strsplit(args[3],split = ",")[[1]]
-  organism <- args[4]
+  gtf_filename <- args[4]
   analysis_type <- args[5]
   paired_samples <- as.logical(toupper(args[6]))
   normalize_data_per_comparison <- as.logical(toupper(args[7]))
@@ -67,7 +62,7 @@ run_all <- function(args){
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
   
-  res_list <- read_and_prepare_count_data(counts_file,experiment_design,organism,analysis_type)
+  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type)
   count_dt <- res_list[[1]]
   txi <- res_list[[2]]
   
@@ -145,13 +140,20 @@ run_all <- function(args){
 }
 
 # develop and test 2
-# setwd("/mnt/ssd/ssd_1/sequia/220407__differential_expression__3433/")
-# args <- c("DE_RSEM/DE_experiment_design.tsv","DE_RSEM/complete_RSEM_table.RData","WT_odd_vs_WT_even,WT_odd_vs_Mut_odd,WT_even_vs_Mut_odd,WT_even_vs_Mut_even","homo_sapiens","RSEM","True","False","False","0.05","2","20","0")
-# args <- c("DE_feature_count/DE_experiment_design.tsv","DE_feature_count/complete_feature_count_table.tsv","WT_odd_vs_WT_even,WT_odd_vs_Mut_odd,WT_even_vs_Mut_odd,WT_even_vs_Mut_even","homo_sapiens","feature_count","True","False","False","0.05","2","20","0")
+# setwd("/mnt/ssd/ssd_1/workspace/vojta/6303__differential_expression__DE_analysis_refactor__220929")
+# args <- c("DE_feature_count_orig/DE_experiment_design.tsv","DE_feature_count_orig/complete_feature_count_table.tsv","CAF_vs_CTRL,NF_O_vs_CTRL,CAF_vs_NF_O","/mnt/ssd/ssd_3/references/homo_sapiens/GRCh38-p10/annot/GRCh38-p10.gtf","feature_count","True","False","False","0.05","2","20","0","")
+# script.dir <- "wrappers/DE_computation/"
+
+script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))
+source(paste0(script.dir,"/DESeq2_edgeR_overlap_func.R"))
+source(paste0(script.dir,"/DESeq2_func.R"))
+source(paste0(script.dir,"/edgeR_func.R"))
+source(paste0(script.dir,"/load_data_func.R"))
 
 # run as Rscript
 args <- commandArgs(trailingOnly = T)
 run_all(args)
+
 
 
 
