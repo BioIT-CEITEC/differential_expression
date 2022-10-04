@@ -19,7 +19,7 @@ command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/DE_computation
             snakemake.params.experiment_design + " " +\
             snakemake.input.count_tab + " " +\
             ",".join(snakemake.params.comparison_dir_list) + " " +\
-            snakemake.params.organism + " " +\
+            snakemake.input.gtf + " " +\
             snakemake.wildcards.analysis_type + " " +\
             str(snakemake.params.paired_replicates) + " " +\
             str(snakemake.params.normalize_data_per_comparison) + " " +\

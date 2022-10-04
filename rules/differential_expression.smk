@@ -24,6 +24,7 @@ def count_tab_input(wildcards):
 
 rule DE_computation:
     input:  count_tab = count_tab_input,
+            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0]
     output: table = expand("DE_{{analysis_type}}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list),
 
     params: organism = config["organism"],
