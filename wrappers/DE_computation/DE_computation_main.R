@@ -34,6 +34,7 @@ library(svglite)
 library(ashr)
 library(plotly)
 library(htmlwidgets)
+library(rtracklayer)
 
 
 
