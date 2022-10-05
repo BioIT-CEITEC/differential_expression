@@ -60,11 +60,10 @@ def input_all(wildcards):
         input["feature_count"] = "results/feature_count_final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "results/RSEM_final_report.html"
-    if config["salmon"]:
-        if config["salmon_map"]:
-            input["salmon_map"] = "results/salmon_map_final_report.html"
-        if config["salmon_align"]:
-            input["salmon_aln"] = "results/salmon_aln_final_report.html"
+    if config["salmon_map"]:
+        input["salmon_map"] = "results/salmon_map_final_report.html"
+    if config["salmon_align"]:
+        input["salmon_aln"] = "results/salmon_aln_final_report.html"
     if config["kallisto"]:
         input["kallisto"] = "results/kallisto_final_report.html"
     return input
