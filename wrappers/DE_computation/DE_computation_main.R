@@ -70,7 +70,7 @@ run_all <- function(args){
   if(!normalize_data_per_comparison){
     #DESeq2 part
     ################
-    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold)
+    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec)
     dds <- res_list[[1]]
     count_dt <- res_list[[2]]
     
@@ -78,7 +78,7 @@ run_all <- function(args){
     
     #edgeR part
     ################
-    res_list <- edgeR_computation(txi,count_dt,experiment_design)
+    res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
     edgeR_DGEList <- res_list[[1]]
     fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
     
@@ -97,14 +97,14 @@ run_all <- function(args){
       
       #DESeq2 part
       ################
-      res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold)
+      res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
       create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare])
       
       #edgeR part
       ################
-      res_list <- edgeR_computation(txi,count_dt,experiment_design)
+      res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
       edgeR_DGEList <- res_list[[1]]
       fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
       
@@ -127,7 +127,7 @@ run_all <- function(args){
     
     #edgeR part
     ################
-    res_list <- get_comparison_specific_edgeR_table(fit_tagwise_dispersion_DGEGLM,edgeR_DGEList,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison,"/edgeR"),p_value_threshold,lfc_threshold)
+    res_list <- get_comparison_specific_edgeR_table(fit_tagwise_dispersion_DGEGLM,edgeR_DGEList,count_dt,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison,"/edgeR"),p_value_threshold,lfc_threshold)
     edgeR_comp_res <- res_list[[1]]
     lrt_tgw <- res_list[[2]]
     

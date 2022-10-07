@@ -15,7 +15,7 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
   for (j in names(experiment_design)[sapply(experiment_design,class) == "character"]) set(experiment_design, j = j, value = make.names(experiment_design[[j]]))
   comparison_vec <- make.names(comparison_vec)
   
-  condition_to_compare_vec <- unique(unlist(strsplit(comparison_vec,split= "_vs_")))
+  condition_to_compare_vec <- rev(unique(unlist(strsplit(comparison_vec,split= "_vs_"))))
   experiment_design[,condition_order := match(experiment_design$condition,condition_to_compare_vec)]
   setorder(experiment_design,condition_order,patient,na.last = T)
   experiment_design[,condition_order := NULL]
@@ -98,7 +98,9 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   setnames(count_dt,"Geneid","Ensembl_Id")
   count_dt[,sum_count := sum(count),by = Feature_name]
   count_dt <- count_dt[sum_count > 0,]
-  setkey(count_dt,Feature_name,sample_name)
+  count_dt <- merge(experiment_design[,.(sample_name, condition, patient)],count_dt,by = "sample_name")
+  setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count"))
+  setkey(count_dt,Feature_name,condition,patient,sample_name)
   
   return(list(count_dt,txi))
 }

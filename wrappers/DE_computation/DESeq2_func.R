@@ -1,8 +1,9 @@
 
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
-count_matrix_from_dt <- function(count_dt,value_var = "count"){
-  res <- dcast.data.table(count_dt,Feature_name ~ sample_name,value.var = value_var)
+count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec){
+  res <- dcast.data.table(count_dt,Feature_name ~ condition + sample_name,value.var = value_var)
+  names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
   mat <- as.matrix(res[,-1,with = F],rownames.force = T)
   rownames(mat) <- res$Feature_name
   return(mat)
@@ -13,7 +14,7 @@ get_title_from_design <- function(experiment_design,prefix = "",suffix = "",non_
   if(length(unique(experiment_design$condition)) > 2) {
     main_text <- non_dual_text
   } else {
-    main_text <- paste0(unique(experiment_design$condition)[1]," vs ",unique(experiment_design$condition)[2])
+    main_text <- paste0(unique(experiment_design$condition)[2]," vs ",unique(experiment_design$condition)[1])
   }
   if(main_text != ""){
     if(prefix != ""){
@@ -33,7 +34,7 @@ get_title_from_design <- function(experiment_design,prefix = "",suffix = "",non_
 
 
 prepare_colors_and_shapes <- function(experiment_design){
-  
+
   if(length(unique(experiment_design$condition)) >= 3){
     num.conds = length(unique(experiment_design$condition))
   }else{
@@ -45,30 +46,30 @@ prepare_colors_and_shapes <- function(experiment_design){
   cond_shapes_plotly <- rep(c("circle","square","diamond","cross","x","circle-open","square-open","diamond-open"),4)
   experiment_design[,pat_shapes := cond_shapes[experiment_design$patient]]
   experiment_design[,pat_shapes_plotly := cond_shapes_plotly[experiment_design$patient]]
-  
-  
+
+
   return(experiment_design)
 }
 
 
-DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remove_genes_with_mean_read_count_threshold){
-  
+DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec){
+
   paired_samples <- length(unique(experiment_design$patient)) != nrow(experiment_design)
-  
+
   if(!is.null(txi)){
     analysis_type <- "RSEM"
   } else {
     analysis_type <- "feature_count"
   }
-  
+
   if(analysis_type == "feature_count"){
     #FeatureCount
     if(paired_samples==T){
       print("Using paired design in DESeq2")
-      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt), colData = experiment_design, design = ~patient+condition)
+      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~patient+condition)
     }else{
       print("Using simple design in DESeq2")
-      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt), colData = experiment_design, design = ~condition)
+      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~condition)
     }
   } else {
     #RSEM
@@ -80,69 +81,69 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
       dds<-DESeqDataSetFromTximport(txi = txi, colData = experiment_design, design = ~condition)
     }
   }
-  
+
   # Remove very low count genes
   keep <- rowSums(counts(dds)) >= remove_genes_with_mean_read_count_threshold
   dds <- dds[keep,]
-  
+
   # The same thing which follows be calculated by >DESeq(dds) instead of three separate commands
   dds<-estimateSizeFactors(dds)
   dds<-estimateDispersions(dds)
   dds<-nbinomWaldTest(dds)
-  
+
   count_dt[,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
   count_dt[,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
   count_dt[,log2counts := log2(normcounts+1)]
   count_dt[,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
-  
+
   if(paired_samples==TRUE){ # If paired - remove batch effect
-    count_dt[,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts"), dds$patient)))]
-    count_dt[,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts"), dds$patient)))]
-    count_dt[,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts"), dds$patient)))]
+    count_dt[,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
   }
-  
-  count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")
-  
-  setkey(count_dt,Feature_name,sample_name)
-  
+
+  #count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")
+
+  #setkey(count_dt,Feature_name,condition,patient,sample_name)
+
   return(list(dds,count_dt))
 }
 
 create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt){
-  
+
   #set output dir but remember where to return
   orig_dir <- getwd()
   dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
   setwd(output_dir)
-  
+
   # get experiment_design_dt from count_dt
   experiment_design_dt <- unique(count_dt[,.(sample_name,condition,patient)])
   setorder(experiment_design_dt,condition,patient)
   experiment_design_dt <- prepare_colors_and_shapes(experiment_design_dt)
-  
+
   #set paired samples if more then one sample belongs to one patient(batch)
   paired_samples <- length(unique(experiment_design_dt$patient)) != nrow(experiment_design_dt)
-  
-  
+
+
   if(paired_samples){
     fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition,`Batch/patient pairing` = patient)],"DESeq2_experiment_design.tsv",sep = "\t")
   } else {
     fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition)],"DESeq2_experiment_design.tsv",sep = "\t")
   }
-  
-  
-  
+
+
+
   ####################################################################################################
-  
+
   pdf(file="DESeq2_disperison_plot.pdf", width=7, height=7)
   plotDispEsts(dds, main="Dispersion Plot")
   dev.off()
-  
-  
+
+
   ####################################################################################################
-  
+
   # Normalization check
-  rcs=ggplot(count_dt[,.(value = sum(rawcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
+  rcs<-ggplot(count_dt[,.(value = sum(rawcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(experiment_design_dt$cond_colours))+
     theme_bw() +
@@ -151,8 +152,8 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     ggtitle("Pre Normalised Counts") +
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
-  
-  ncs=ggplot(count_dt[,.(value = sum(normcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
+
+  ncs<-ggplot(count_dt[,.(value = sum(normcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
     geom_bar(stat = "identity", width = 0.8)+
     scale_fill_manual(values = unique(experiment_design_dt$cond_colours))+
     theme_bw() +
@@ -161,12 +162,12 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     ggtitle("Post Normalised Counts") +
     theme(axis.text.x = element_text(angle = 90))+
     theme(plot.title = element_text(face="bold"))
-  
-  rcs_ncs = plot_grid(rcs,ncs,nrow=2)
-  
+
+  rcs_ncs <- plot_grid(rcs,ncs,nrow=2)
+
   # now add the title
-  count.title = get_title_from_design(experiment_design_dt,"","","All samples")
-  
+  count.title <- get_title_from_design(experiment_design_dt,"","","All samples")
+
   title <- ggdraw() +
     draw_label(count.title,
                fontface = 'bold',
@@ -178,82 +179,82 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
       # so title is aligned with left edge of first plot
       plot.margin = margin(0, 0, 0, 7)
     )
-  
+
   # rel_heights values control vertical title margins
   title_rcs_ncs = plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
-  
+
   ggsave(filename = "report_data/pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
   ggsave(filename = "report_data/pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
   ggsave(filename = "pre_post_norm_counts.pdf", title_rcs_ncs, width = 7, height = 7, device = "pdf")
-  
-  
-  #?? organise by 
-  
+
+
+  #?? organise by
+
   ####################################################################################################
   # Heatmaps
-  
-  hm.log.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Log2)",connection = "\n")
-  hm.vst.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (VST)",connection = "\n")
-  hm.raw.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Raw Counts)",connection = "\n")
-  
-  
+
+  hm.log.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Log2)",connection = "\n")
+  hm.vst.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (VST)",connection = "\n")
+  hm.raw.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Raw Counts)",connection = "\n")
+
+
   pdf(file="heatmaps_samples.pdf")
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"rawcounts")), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
   dev.off()
-  
+
   png(file="report_data/heatmaps_samples_log2.png", width = 7, height = 7, unit = "in", res=200)
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
   dev.off()
   png(file="report_data/heatmaps_samples_vst.png", width = 7, height = 7, unit = "in", res=200)
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
   dev.off()
-  
+
   svg(file="report_data/heatmaps_samples_log2.svg", width = 7, height = 7)
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
   dev.off()
   svg(file="report_data/heatmaps_samples_vst.svg", width = 7, height = 7)
-  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+  heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
   dev.off()
-  
+
   ####################################################################################################
-  
+
   if(paired_samples==TRUE){ # If paired - remove batch effect
     print("Plotting sample heatmaps with batch correction as well.")
-    
-    hm.log.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Log2)","with a batch effect removed",connection = "\n")
-    hm.vst.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (VST)","with a batch effect removed",connection = "\n")
-    hm.raw.title = get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Raw Counts)","with a batch effect removed",connection = "\n")
-    
+
+    hm.log.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Log2)","with a batch effect removed",connection = "\n")
+    hm.vst.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (VST)","with a batch effect removed",connection = "\n")
+    hm.raw.title <- get_title_from_design(experiment_design_dt,"Sample to Sample Correlation (Raw Counts)","with a batch effect removed",connection = "\n")
+
     pdf(file="heatmaps_samples_batch.pdf")
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"rawcounts_batch")), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"rawcounts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.raw.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
     dev.off()
-    
+
     png(file="report_data/heatmaps_samples_log_batch.png", width = 7, height = 7, unit = "in", res=200)
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
     dev.off()
     png(file="report_data/heatmaps_samples_vst_batch.png", width = 7, height = 7, unit = "in", res=200)
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
     dev.off()
-    
+
     svg(file="report_data/heatmaps_samples_log_batch.svg", width = 7, height = 7)
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch")), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.log.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
     dev.off()
     svg(file="report_data/heatmaps_samples_vst_batch.svg", width = 7, height = 7)
-    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch")), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
+    heatmap.2(cor(count_matrix_from_dt(count_dt,"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec)), trace="none", col=hmcol, main=hm.vst.title, RowSideColors=experiment_design_dt$cond_colours, margins=c(9.5,9.5))
     dev.off()
-    
+
   }
-  
+
   ####################################################################################################
-  
+
   count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
-  pca<-princomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts"))
+  pca<-princomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec))
   count_dt[,max_vstcounts := NULL]
-  
+
   # pdf(file="sample_to_sample_PCA.pdf")
   # # First two components
   # par(mfrow=c(1,1), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
@@ -270,63 +271,63 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   # text(pca$loadings[,c(2,3)], as.vector(colnames(count_dt)), pos=3)
   # legend("topright", levels(unique(conds)), fill=cond_colours[levels(unique(conds))], cex=1)
   # dev.off()
-  
+
   ####################################################################################################
-  
-  
-  
-  
-  get_pca_plot <- function(prcomp_data,experiment_design_dt,pca_title,comp_y_id = 1,comp_x_id = 2){
-    PC1 = paste0("PC",comp_y_id)
-    PC2 = paste0("PC",comp_x_id)
-    
+
+
+
+
+  get_pca_plot <- function(prcomp_data,experiment_design_dt,pca_title,comp_x_id = 1,comp_y_id = 2){
+    PC1 <- paste0("PC",comp_x_id)
+    PC2 <- paste0("PC",comp_y_id)
+
     pcaData <- as.data.frame(prcomp_data$rotation)
     pcaData$sample_name <- rownames(pcaData)
     pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
-    
+
     pca1 <- ggplot(pcaData, aes_string(PC1, PC2, color="condition"))
     if(paired_samples){
-      pca1 = pca1 + geom_point(size=3, aes(shape = patient))
+      pca1 <- pca1 + geom_point(size=3, aes(shape = patient))
     }else{
-      pca1 = pca1 + geom_point(size=3)
+      pca1 <- pca1 + geom_point(size=3)
     }
-    pca1 = pca1 + scale_color_manual(values = unique(experiment_design_dt$cond_colours)) +
+    pca1 <- pca1 + scale_color_manual(values = unique(experiment_design_dt$cond_colours)) +
       theme_bw() +
       scale_shape_manual(values=experiment_design_dt$pat_shapes) +
-      ylab(paste0(PC1," - ",round(summary(prcomp_data)$importance[2,comp_y_id] * 100,1),"% variance explained")) +
-      xlab(paste0(PC2," - ",round(summary(prcomp_data)$importance[2,comp_x_id] * 100,1),"% variance explained")) +
+      xlab(paste0(PC1," - ",round(summary(prcomp_data)$importance[2,comp_x_id] * 100,1),"% variance explained")) +
+      ylab(paste0(PC2," - ",round(summary(prcomp_data)$importance[2,comp_y_id] * 100,1),"% variance explained")) +
       theme(plot.title = element_text(face="bold")) +
       theme(legend.position="bottom") +
       ggtitle(pca_title)
-    
-    
+
+
     # pca1P = pca1 + ggrepel::geom_text_repel(aes(PC1, PC2, label = patient), color="black", max.overlaps = length(pcaData$sample_name))
     return(pca1 + ggrepel::geom_text_repel(aes_string(PC1, PC2, label = "sample_name"), color="black", max.overlaps = length(pcaData$sample_name)))
   }
-  
+
   count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
-  prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts"))
+  prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec))
   count_dt[,max_vstcounts := NULL]
   pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)")
-  
+
   pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
-  
+
   ggsave(filename = "report_data/sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
   # ggsave(filename = "sample_to_sample_PCA2.png", pca1P, units = "in", dpi=200, width = 7, height = 7, device="png")
   ggsave(filename = "report_data/sample_to_sample_PCA.svg", pca1S, width = 7, height = 7, device="svg")
   # ggsave(filename = "sample_to_sample_PCA2.svg", pca1P, width = 7, height = 7, device="svg")
   ggsave(filename = "sample_to_sample_PCA.pdf", pca1S, width = 7, height = 7, device="pdf")
-  
+
   ####################################################################################################
   # 3D PCA plot with plotly
   ####################################################################################################
-  
+
   pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
   setnames(pcaData,"rn","sample_name")
   pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
   pcaData[,condition := as.character(condition)]
   setorder(pcaData,condition)
-  
+
   if(paired_samples){
     fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),hoverinfo = "text",
                    marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
@@ -340,58 +341,58 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
                                      yaxis = list(title = paste0("PC2 - ",round(summary(prcomp_data)$importance[2,2] * 100,1),"% variance explained")),
                                      zaxis = list(title = paste0("PC3 - ",round(summary(prcomp_data)$importance[2,3] * 100,1),"% variance explained"))))
   saveWidget(as_widget(fig), "sample_to_sample_PCA_3D.html")
-  
+
   ####################################################################################################
-  
+
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(paired_samples){
-    
+
     count_dt[,max_vstcounts_batch := max(vstcounts_batch),by = Feature_name]
-    prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts_batch > 0],"vstcounts_batch"))
+    prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts_batch > 0],"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec))
     count_dt[,max_vstcounts_batch := NULL]
     pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)","with a batch effect removed")
-    
+
     pca1_batchS <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
-    
+
     ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     # ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
-    
+
     ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
     # ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
-    
+
     ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device="pdf")
-    
-    
+
+
     ####################################################################################################
     # 3D PCA plot with plotly
     ####################################################################################################
-    
+
     pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
     setnames(pcaData,"rn","sample_name")
     pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
     pcaData[,condition := as.character(condition)]
     setorder(pcaData,condition)
-    
+
 
     fig <- plot_ly(pcaData, x = ~PC1, y = ~PC2, z = ~PC3, color = ~condition, colors = unique(pcaData$cond_colours),hoverinfo = "text",
-                     marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
+                   marker = list(symbol = ~pat_shapes_plotly),text = ~paste('Sample name:',sample_name,'<br>Condition:',condition, '<br>Batch pair',patient))
     fig <- fig %>% add_markers()
     fig <- fig %>% layout(title = pca_title,
                           scene = list(xaxis = list(title = paste0("PC1 - ",round(summary(prcomp_data)$importance[2,1] * 100,1),"% variance explained")),
                                        yaxis = list(title = paste0("PC2 - ",round(summary(prcomp_data)$importance[2,2] * 100,1),"% variance explained")),
                                        zaxis = list(title = paste0("PC3 - ",round(summary(prcomp_data)$importance[2,3] * 100,1),"% variance explained"))))
     saveWidget(as_widget(fig), "sample_to_sample_PCA_3D_batch.html")
-    
+
   }
-  
+
   ####################################################################################################
-  
+
   # if(paired_samples){
   #   fwrite(as.data.table(count_matrix_from_dt(count_dt,"vstcounts_batch")), file = "norm_counts_batch.tsv", sep = "\t", row.names = T)
   # }
-  
+
   setwd(orig_dir)
-  
+
   #pdf(file="contributions_PCA.pdf", width = 7, height = 7)
   #plot(pca, type = "l", main="Principal Component Contributions")
   #dev.off()
@@ -402,18 +403,18 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   orig_dir <- getwd()
   dir.create(paste0(output_dir,"/detail_results"),showWarnings = F,recursive = T)
   setwd(output_dir)
-  
+
   #create copy of dds not to change orig object
   dds <- copy(dds)
-  
+
   if(!any(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))){
     relevel_condition <- relevel(experiment_design$condition, condsToCompare[2])
     dds$condition <- relevel_condition
     dds <- nbinomWaldTest(dds)
   }
-  
+
   coef <- which(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))
-  
+
   deseq_obj_comp_res <- lfcShrink(dds, coef=coef, type="ashr", lfcThreshold=lfc_threshold)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
   deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
@@ -426,15 +427,17 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   comp_res[(abs_log2FoldChange >= lfc_threshold) & (padj < p_value_threshold) & !is.na(padj),significant_DE := T]
   comp_res[,no_filter_significant_DE := F]
   comp_res[(no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
-  
-  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ sample_name,value.var = "normcounts")
+
+  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ condition + sample_name,value.var = "normcounts")
+  names(normcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(normcounts))
   setnames(normcounts,names(normcounts)[-1],paste0(names(normcounts)[-1],"_normCounts"))
   comp_res <- merge.data.table(comp_res,normcounts,by = "Feature_name")
-  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ sample_name,value.var = "rawcounts")
+  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ condition + sample_name,value.var = "rawcounts")
+  names(rawcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(rawcounts))
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
   comp_res <- merge.data.table(comp_res,rawcounts,by = "Feature_name")
-  
-  
+
+
   # Quick check of DE genes
   tmpMatrix<-matrix(ncol=1, nrow=5)
   rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
@@ -444,7 +447,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   tmpMatrix[4,1]<-nrow(comp_res[((padj >= p_value_threshold) | ((log2FoldChange > (-lfc_threshold)) & (log2FoldChange < (lfc_threshold)))) & !is.na(padj),])
   tmpMatrix[5,1]<-sum(is.na(comp_res$padj))
   tmpMatrix[,1]<-paste(": ", tmpMatrix[,1], ", ",round(tmpMatrix[,1]/((tmpMatrix[1,1]/100)), 1), "%", sep="")
-  
+
   # Quick check of DE genes
   tmpMatrix_no_filt<-matrix(ncol=1, nrow=5)
   rownames(tmpMatrix_no_filt)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
@@ -454,7 +457,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   tmpMatrix_no_filt[4,1]<-nrow(comp_res[((no_filter_padj >= p_value_threshold) | ((no_filter_log2FoldChange > (-lfc_threshold)) & (no_filter_log2FoldChange < (lfc_threshold)))) & !is.na(no_filter_padj),])
   tmpMatrix_no_filt[5,1]<-sum(is.na(comp_res$no_filter_padj))
   tmpMatrix_no_filt[,1]<-paste(": ", tmpMatrix_no_filt[,1], ", ",round(tmpMatrix_no_filt[,1]/((tmpMatrix_no_filt[1,1]/100)), 1), "%", sep="")
-  
+
   sink("DESeq2_de_genes_summary.txt")
   cat(paste0("DESeq2 results summary for comparison of conditions ",condsToCompare[1]," to ",condsToCompare[2],"\n"))
   cat(paste0("\nNumber of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off\n"))
@@ -469,76 +472,76 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   cat(paste0("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2),"\n"))
   print(noquote(tmpMatrix_no_filt))
   sink()
-  
+
   # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
   setcolorder(comp_res,c("Ensembl_Id","baseMean","log2FoldChange","lfcSE","pvalue","padj","significant_DE","Feature_name","biotype"))
   setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
   fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")
-  
+
   setwd(orig_dir)
-  
+
   return(comp_res)
 }
 
 
 create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,condsToCompare,output_dir,paired_samples,TOP,p_value_threshold,lfc_threshold){
-  
-  
+
+
   ##DESeq2 comparison specific graphic ploting
   ####################################################################################################
-  
+
   #set output dir but remember where to return
   orig_dir <- getwd()
   dir.create(paste0(output_dir,"/report_data"),showWarnings = F,recursive = T)
   setwd(output_dir)
-  
+
   TOP_BCKP<-TOP
   TOP <- min(TOP,sum(comp_res$significant_DE))
   RANGE <- seq_len(TOP)
-  
+
   if(TOP==0){ # Set range for naming the samples - help to avoid naming of samples even if there is no DE gene; THIS ERROR IS OK WHEN WE HAVE 0 DE GENES Error in text.default(res[RANGE, ]$log2FoldChange, -log(res[RANGE, ]$padj,  : zero-length 'labels' specified
     system("touch ZERO_DE_GENES_FOUND")
   }
-  
+
   if(TOP==1){ # Set range for naming the samples - help to avoid naming of samples even if there is no DE gene; THIS ERROR IS OK WHEN WE HAVE 0 DE GENES Error in text.default(res[RANGE, ]$log2FoldChange, -log(res[RANGE, ]$padj,  : zero-length 'labels' specified
     system("touch ONLY_ONE_DE_GENE_FOUND")
   }
-  
+
   setorder(comp_res,padj,-abs_log2FoldChange,na.last = T) # Make sure res is ordered by adj.p-value
-  
+
   if(TOP > 0){
-    
+
     #volcano plot
-    
+
     comp_res[,sig := ifelse(padj < p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig")]
-    p = ggplot(comp_res[!is.na(padj)], aes(log2FoldChange, -log10(padj))) +
+    p <- ggplot(comp_res[!is.na(padj)], aes(log2FoldChange, -log10(padj))) +
       geom_point(aes(col=sig), size=0.5) +
       scale_color_manual(values=c("black", "red")) +
       geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
       ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
-      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") + 
-      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") + 
+      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") +
+      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") +
       theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
-    
+
     pdf(file=paste("volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".pdf", sep=""))
     print(p)
     dev.off()
-    
+
     png(file=paste("report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(p)
     dev.off()
-    
+
     svg(file=paste("report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],".svg", sep=""),width = 7, height = 7)
     print(p)
     dev.off()
-    
+
     #ma plot
-    
+
     ma <- ggmaplot(comp_res, main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
-                   fdr = p_value_threshold, fc = lfc_threshold, size = 0.4,
+                   fdr = p_value_threshold, fc = lfc_threshold, size = 0.5,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
                    legend = "top", top = TOP,
@@ -547,53 +550,53 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
                    font.main = "bold",
                    ggtheme = ggplot2::theme_minimal())+
       theme(plot.title = element_text(hjust = 0.5))
-    
+
     pdf(file=paste("MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".pdf", sep=""))
     print(ma)
     dev.off()
-    
+
     png(file=paste("report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(ma)
     dev.off()
-    
+
     svg(file=paste("report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],".svg", sep=""),width = 7, height = 7)
     print(ma)
     dev.off()
-    
-    
+
+
     #volcano and ma plot for not filtered results
-    
+
     TOP<-TOP_BCKP
     TOP <- min(TOP,sum(comp_res$no_filter_significant_DE))
     RANGE <- seq_len(TOP)
-    
+
     #volcano plot
-    
-    p = ggplot(comp_res[!is.na(padj)], aes(no_filter_log2FoldChange, -log10(no_filter_padj))) +
+
+    p <- ggplot(comp_res[!is.na(padj)], aes(no_filter_log2FoldChange, -log10(no_filter_padj))) +
       geom_point(aes(col=sig), size=0.5) +
       scale_color_manual(values=c("black", "red")) +
       geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
       ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
-      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") + 
-      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") + 
+      annotate("text",x=min(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[1],size=5,fontface = "bold") +
+      annotate("text",x=max(comp_res[!is.na(padj)]$log2FoldChange),y=0,vjust=-0.5,label=condsToCompare[2],size=5,fontface = "bold") +
       theme(plot.title = element_text(hjust = 0.5)) + theme_bw() + theme(plot.title = element_text(face="bold"))
-    
+
     pdf(file=paste("detail_results/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.pdf", sep=""))
     print(p)
     dev.off()
-    
+
     png(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(p)
     dev.off()
-    
+
     svg(file=paste("detail_results/report_data/volcanoplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.svg", sep=""),width = 7, height = 7)
     print(p)
     dev.off()
-    
+
     #ma plot
-    
+
     ma <- ggmaplot(comp_res[,.(Feature_name,baseMean,padj = no_filter_padj,log2FoldChange = no_filter_log2FoldChange)], main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
                    fdr = p_value_threshold, fc = lfc_threshold, size = 0.4,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
@@ -604,31 +607,31 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
                    font.main = "bold",
                    ggtheme = ggplot2::theme_minimal())+
       theme(plot.title = element_text(hjust = 0.5))
-    
+
     pdf(file=paste("detail_results/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.pdf", sep=""))
     print(ma)
     dev.off()
-    
+
     png(file=paste("detail_results/report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.png", sep=""), units = "in",width = 7, height = 7, res = 200)
     print(ma)
     dev.off()
-    
+
     svg(file=paste("detail_results/report_data/MAplot_", condsToCompare[1], "_vs_", condsToCompare[2],"_noIndFilt.svg", sep=""),width = 7, height = 7)
     print(ma)
     dev.off()
-    
+
   }
-  
+
   # Heatmaps of selected genes
   if(TOP >  1){
-    
+
     if(paired_samples==T){
       print("Using paired design")
-      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts_batch")
+      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec)
       df<-unique(count_dt[condition %in% condsToCompare,.(sample_name,condition,patient)])
     }else{
       print("Using simple design")
-      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts")
+      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts",condition_to_compare_vec = condition_to_compare_vec)
       df<-unique(count_dt[condition %in% condsToCompare,.(sample_name,condition)])
     }
     df <- as.data.frame(df)
