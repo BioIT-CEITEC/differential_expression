@@ -117,7 +117,7 @@ run_all <- function(args){
       
       #edgeR part
       ################
-      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison,"/detail_results"),edgeR_DGEList,count_dt[condition %in% condsToCompare],reduced_plot_design = T)
+      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison,"/edgeR"),edgeR_DGEList,count_dt[condition %in% condsToCompare],reduced_plot_design = T)
     }
     
     #DESeq2 part

@@ -181,7 +181,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     )
 
   # rel_heights values control vertical title margins
-  title_rcs_ncs = plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
+  title_rcs_ncs <- plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
 
   ggsave(filename = "report_data/pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
   ggsave(filename = "report_data/pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
@@ -251,9 +251,9 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
 
   ####################################################################################################
 
-  count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
-  pca<-princomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec))
-  count_dt[,max_vstcounts := NULL]
+  # count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
+  # pca<-princomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec))
+  # count_dt[,max_vstcounts := NULL]
 
   # pdf(file="sample_to_sample_PCA.pdf")
   # # First two components
@@ -278,12 +278,13 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
 
 
   get_pca_plot <- function(prcomp_data,experiment_design_dt,pca_title,comp_x_id = 1,comp_y_id = 2){
+
+    pcaData <- as.data.table(prcomp_data$x,keep.rownames = T)
+    setnames(pcaData,"rn","sample_name")
+    pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
+
     PC1 <- paste0("PC",comp_x_id)
     PC2 <- paste0("PC",comp_y_id)
-
-    pcaData <- as.data.frame(prcomp_data$rotation)
-    pcaData$sample_name <- rownames(pcaData)
-    pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
 
     pca1 <- ggplot(pcaData, aes_string(PC1, PC2, color="condition"))
     if(paired_samples){
@@ -305,9 +306,28 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     return(pca1 + ggrepel::geom_text_repel(aes_string(PC1, PC2, label = "sample_name"), color="black", max.overlaps = length(pcaData$sample_name)))
   }
 
-  count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
-  prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec))
-  count_dt[,max_vstcounts := NULL]
+  get_prcomp <- function(count_dt,experiment_design_dt,paired=FALSE){
+    if(!paired){
+      count_dt[,max_vstcounts := max(vstcounts),by = Feature_name]
+      vstcounts <- count_matrix_from_dt(count_dt[max_vstcounts > 0],"vstcounts",condition_to_compare_vec = condition_to_compare_vec)
+      count_dt[,max_vstcounts := NULL]
+    }else{
+      count_dt[,max_vstcounts_batch := max(vstcounts_batch),by = Feature_name]
+      vstcounts <- count_matrix_from_dt(count_dt[max_vstcounts_batch > 0],"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec)
+      count_dt[,max_vstcounts_batch := NULL]
+    }
+
+    # calculate the variance for each gene
+    rv <- rowVars(vstcounts)
+    # select the ntop genes by variance
+    select <- order(rv, decreasing=TRUE)[seq_len(min(500, length(rv)))]
+    # perform a PCA on the data in vstcounts for the selected genes
+    prcomp_data <- prcomp(t((vstcounts)[select,]))
+
+    return(prcomp_data)
+  }
+
+  prcomp_data <- get_prcomp(count_dt,experiment_design_dt,paired=FALSE)
   pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)")
 
   pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
@@ -322,7 +342,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   # 3D PCA plot with plotly
   ####################################################################################################
 
-  pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
+  pcaData <- as.data.table(prcomp_data$x,keep.rownames = T)
   setnames(pcaData,"rn","sample_name")
   pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
   pcaData[,condition := as.character(condition)]
@@ -347,17 +367,15 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   # Get PCA with batch effect from DESeq2 results https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#principal-component-plot-of-the-samples
   if(paired_samples){
 
-    count_dt[,max_vstcounts_batch := max(vstcounts_batch),by = Feature_name]
-    prcomp_data <- prcomp(count_matrix_from_dt(count_dt[max_vstcounts_batch > 0],"vstcounts_batch",condition_to_compare_vec = condition_to_compare_vec))
-    count_dt[,max_vstcounts_batch := NULL]
+    prcomp_data <- get_prcomp(count_dt,experiment_design_dt,paired=TRUE)
     pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)","with a batch effect removed")
 
     pca1_batchS <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
 
-    ggsave(filename = "sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
+    ggsave(filename = "report_data/sample_to_sample_PCA_batch.png", pca1_batchS, units = "in", dpi=200, width = 7, height = 7, device="png")
     # ggsave(filename = "sample_to_sample_PCA_batch2.png", pca1_batchP, units = "in", dpi=200, width = 7, height = 7, device="png")
 
-    ggsave(filename = "sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
+    ggsave(filename = "report_data/sample_to_sample_PCA_batch.svg", pca1_batchS, width = 7, height = 7, device="svg")
     # ggsave(filename = "sample_to_sample_PCA_batch2.svg", pca1_batchP, width = 7, height = 7, device="svg")
 
     ggsave(filename = "sample_to_sample_PCA_batch.pdf", pca1_batchS, width = 7, height = 7, device="pdf")
@@ -367,7 +385,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     # 3D PCA plot with plotly
     ####################################################################################################
 
-    pcaData <- as.data.table(prcomp_data$rotation,keep.rownames = T)
+    pcaData <- as.data.table(prcomp_data$x,keep.rownames = T)
     setnames(pcaData,"rn","sample_name")
     pcaData <- merge(pcaData, experiment_design_dt, by="sample_name")
     pcaData[,condition := as.character(condition)]

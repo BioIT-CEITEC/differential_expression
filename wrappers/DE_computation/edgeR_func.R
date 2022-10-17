@@ -81,7 +81,7 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   setorder(experiment_design_dt,condition,patient)
   
   #save sample names to control with lib.sizes
-  dsamples<-as.data.frame(edgeR_DGEList$samples)
+  dsamples<-as.data.frame(d$samples)
   dsamples$sample_name<-rownames(dsamples)
   fwrite(merge(experiment_design_dt, dsamples, by.x=c("sample_name","condition"), by.y=c("sample_name","group"), all=F),"detail_results/edgeR_design_control.txt",sep = "\t")
 
