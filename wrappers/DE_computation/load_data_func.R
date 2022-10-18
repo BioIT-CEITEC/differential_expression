@@ -15,7 +15,7 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
   for (j in names(experiment_design)[sapply(experiment_design,class) == "character"]) set(experiment_design, j = j, value = make.names(experiment_design[[j]]))
   comparison_vec <- make.names(comparison_vec)
   
-  condition_to_compare_vec <- rev(unique(unlist(strsplit(comparison_vec,split= "_vs_"))))
+  condition_to_compare_vec <- unique(unlist(strsplit(comparison_vec,split= "_vs_")))
   experiment_design[,condition_order := match(experiment_design$condition,condition_to_compare_vec)]
   setorder(experiment_design,condition_order,patient,na.last = T)
   experiment_design[,condition_order := NULL]
