@@ -433,10 +433,10 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
 
   coef <- which(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))
 
-  deseq_obj_comp_res <- lfcShrink(dds, coef=coef, type="normal", lfcThreshold=lfc_threshold)
+  deseq_obj_comp_res <- lfcShrink(dds, coef=coef, type="normal", lfcThreshold=0)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
   deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
-  deseq_obj_comp_res_no_filt <- lfcShrink(dds, type="normal", lfcThreshold=lfc_threshold,res = deseq_obj_comp_res_no_filt)
+  deseq_obj_comp_res_no_filt <- lfcShrink(dds, type="normal", lfcThreshold=0,res = deseq_obj_comp_res_no_filt)
   comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
   setnames(comp_res,"rn","Feature_name")
