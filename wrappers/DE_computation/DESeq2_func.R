@@ -143,49 +143,28 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   ####################################################################################################
 
   # Normalization check
-  rcs<-ggplot(count_dt[,.(value = sum(rawcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
-    geom_bar(stat = "identity", width = 0.8)+
-    scale_fill_manual(values = unique(experiment_design_dt$cond_colours))+
-    theme_bw() +
-    ylab("") +
-    xlab("") +
-    ggtitle("Pre Normalised Counts") +
-    theme(axis.text.x = element_text(angle = 90))+
-    theme(plot.title = element_text(face="bold"))
+  rcs<-count_dt[,.(value = sum(rawcounts), type = "Raw counts"),by = .(sample_name,condition)]
+  ncs<-count_dt[,.(value = sum(normcounts), type = "Normalised counts"),by = .(sample_name,condition)]
+  bcs<-rbind(rcs,ncs)
+  fwrite(bcs,"pre_post_norm_counts.tsv", sep="\t")
 
-  ncs<-ggplot(count_dt[,.(value = sum(normcounts)),by = .(sample_name,condition)], aes(sample_name, value, fill=condition))+
-    geom_bar(stat = "identity", width = 0.8)+
-    scale_fill_manual(values = unique(experiment_design_dt$cond_colours))+
-    theme_bw() +
-    ylab("") +
-    xlab("") +
-    ggtitle("Post Normalised Counts") +
-    theme(axis.text.x = element_text(angle = 90))+
-    theme(plot.title = element_text(face="bold"))
-
-  rcs_ncs <- plot_grid(rcs,ncs,nrow=2)
-
-  # now add the title
+  # prepare the title
   count.title <- get_title_from_design(experiment_design_dt,"","","All samples")
 
-  title <- ggdraw() +
-    draw_label(count.title,
-               fontface = 'bold',
-               x = 0,
-               hjust = 0
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 7)
-    )
+  rcs_ncs <- ggplot(bcs, aes(sample_name, value, fill=condition))+
+    geom_bar(stat = "identity", width = 0.8)+
+    scale_fill_manual(values = unique(experiment_design_dt$cond_colours))+
+    theme_bw() +
+    ylab("") +
+    xlab("") +
+    facet_grid(factor(type, levels=c("Raw counts","Normalised counts")) ~ .) +
+    ggtitle(paste0("Pre & Post Normalised Counts\n",count.title)) +
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(plot.title = element_text(face="bold"))
 
-  # rel_heights values control vertical title margins
-  title_rcs_ncs <- plot_grid(title, rcs_ncs, ncol = 1,rel_heights = c(0.1, 1))
-
-  ggsave(filename = "report_data/pre_post_norm_counts.png", title_rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
-  ggsave(filename = "report_data/pre_post_norm_counts.svg", title_rcs_ncs, width = 7, height = 7, device = "svg")
-  ggsave(filename = "pre_post_norm_counts.pdf", title_rcs_ncs, width = 7, height = 7, device = "pdf")
+  ggsave(filename = "report_data/pre_post_norm_counts.png", rcs_ncs, units = "in", dpi = 200, width = 7, height = 7, device = "png")
+  ggsave(filename = "report_data/pre_post_norm_counts.svg", rcs_ncs, width = 7, height = 7, device = "svg")
+  ggsave(filename = "pre_post_norm_counts.pdf", rcs_ncs, width = 7, height = 7, device = "pdf")
 
 
   #?? organise by
@@ -330,6 +309,10 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   prcomp_data <- get_prcomp(count_dt,experiment_design_dt,paired=FALSE)
   pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)")
 
+  pca.dt <- as.data.table(prcomp_data$x, keep.rownames = T)
+  setnames(pca.dt,"rn","sample_name")
+  fwrite(pca.dt,"sample_to_sample_PCA.tsv", sep="\t")
+
   pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
 
   ggsave(filename = "report_data/sample_to_sample_PCA.png", pca1S, units = "in", dpi=200, width = 7, height = 7, device="png")
@@ -368,6 +351,11 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   if(paired_samples){
 
     prcomp_data <- get_prcomp(count_dt,experiment_design_dt,paired=TRUE)
+
+    pca.dt <- as.data.table(prcomp_data$x, keep.rownames = T)
+    setnames(pca.dt,"rn","sample_name")
+    fwrite(pca.dt,"sample_to_sample_PCA_batch.tsv", sep="\t")
+
     pca_title <- get_title_from_design(experiment_design_dt,"PCA (DESeq2 VST)","with a batch effect removed")
 
     pca1_batchS <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
@@ -425,26 +413,20 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   #create copy of dds not to change orig object
   dds <- copy(dds)
 
-  if(!any(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))){
-    relevel_condition <- relevel(experiment_design$condition, condsToCompare[2])
-    dds$condition <- relevel_condition
-    dds <- nbinomWaldTest(dds)
-  }
-
-  coef <- which(resultsNames(dds) == paste0("condition_",condsToCompare[1],"_vs_",condsToCompare[2]))
-
-  deseq_obj_comp_res <- lfcShrink(dds, coef=coef, type="normal", lfcThreshold=0)
+  deseq_obj_comp_res <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=T)
+  deseq_obj_comp_res <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), res=deseq_obj_comp_res, type="normal", lfcThreshold=0)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
   deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
-  deseq_obj_comp_res_no_filt <- lfcShrink(dds, type="normal", lfcThreshold=0,res = deseq_obj_comp_res_no_filt)
+  deseq_obj_comp_res_no_filt <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), type="normal", lfcThreshold=0,res = deseq_obj_comp_res_no_filt)
   comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
+  comp_res[,abs_no_filter_log2FoldChange := abs(no_filter_log2FoldChange)]
   setnames(comp_res,"rn","Feature_name")
   comp_res <- merge(unique(count_dt[,.(Feature_name,Ensembl_Id,biotype)]),comp_res,by = "Feature_name")
   comp_res[,significant_DE := F]
   comp_res[(abs_log2FoldChange >= lfc_threshold) & (padj < p_value_threshold) & !is.na(padj),significant_DE := T]
   comp_res[,no_filter_significant_DE := F]
-  comp_res[(no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
+  comp_res[(abs_no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
 
   normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ condition + sample_name,value.var = "normcounts")
   names(normcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(normcounts))
@@ -455,46 +437,32 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
   comp_res <- merge.data.table(comp_res,rawcounts,by = "Feature_name")
 
+  comp_res_summary <- comp_res[, .(test = c("DESeq2","DESeq2_no_filter"),
+               total = c(length(Feature_name),length(Feature_name)),
+               na = c(length(Feature_name[is.na(padj)==TRUE]),
+                      length(Feature_name[is.na(no_filter_padj)==TRUE])),
+               not_sig = c(length(Feature_name[na.omit(padj) >= p_value_threshold]),
+                           length(Feature_name[na.omit(no_filter_padj) >= p_value_threshold])),
+               sig = c(length(Feature_name[na.omit(padj) < p_value_threshold]),
+                        length(Feature_name[na.omit(no_filter_padj) < p_value_threshold])),
+               sig_up = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange > 0]),
+                           length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange > 0])),
+               sig_down = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange < 0]),
+                             length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange < 0])),
+               sig_lfc = c(length(Feature_name[na.omit(padj) < p_value_threshold & abs_log2FoldChange >= lfc_threshold]),
+                            length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & abs_no_filter_log2FoldChange >= lfc_threshold])),
+               sig_lfc_up = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange >= lfc_threshold]),
+                               length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange >= lfc_threshold])),
+               sig_lfc_down = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange <= -lfc_threshold]),
+                                length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange <= -lfc_threshold])))]
 
-  # Quick check of DE genes
-  tmpMatrix<-matrix(ncol=1, nrow=5)
-  rownames(tmpMatrix)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
-  tmpMatrix[1,1]<-nrow(comp_res)
-  tmpMatrix[2,1]<-nrow(comp_res[log2FoldChange >= (lfc_threshold) & (padj < p_value_threshold) & !is.na(padj),])
-  tmpMatrix[3,1]<-nrow(comp_res[(log2FoldChange <= (-lfc_threshold)) & (padj < p_value_threshold) & !is.na(padj),])
-  tmpMatrix[4,1]<-nrow(comp_res[((padj >= p_value_threshold) | ((log2FoldChange > (-lfc_threshold)) & (log2FoldChange < (lfc_threshold)))) & !is.na(padj),])
-  tmpMatrix[5,1]<-sum(is.na(comp_res$padj))
-  tmpMatrix[,1]<-paste(": ", tmpMatrix[,1], ", ",round(tmpMatrix[,1]/((tmpMatrix[1,1]/100)), 1), "%", sep="")
-
-  # Quick check of DE genes
-  tmpMatrix_no_filt<-matrix(ncol=1, nrow=5)
-  rownames(tmpMatrix_no_filt)<-c("total genes", paste("LFC >= ", round(lfc_threshold, 2), " (up)", sep=""), paste("LFC <= ", -(round(lfc_threshold, 2)), " (down)", sep=""), "not de", "low counts")
-  tmpMatrix_no_filt[1,1]<-nrow(comp_res)
-  tmpMatrix_no_filt[2,1]<-nrow(comp_res[no_filter_log2FoldChange >= (lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),])
-  tmpMatrix_no_filt[3,1]<-nrow(comp_res[(no_filter_log2FoldChange <= (-lfc_threshold)) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),])
-  tmpMatrix_no_filt[4,1]<-nrow(comp_res[((no_filter_padj >= p_value_threshold) | ((no_filter_log2FoldChange > (-lfc_threshold)) & (no_filter_log2FoldChange < (lfc_threshold)))) & !is.na(no_filter_padj),])
-  tmpMatrix_no_filt[5,1]<-sum(is.na(comp_res$no_filter_padj))
-  tmpMatrix_no_filt[,1]<-paste(": ", tmpMatrix_no_filt[,1], ", ",round(tmpMatrix_no_filt[,1]/((tmpMatrix_no_filt[1,1]/100)), 1), "%", sep="")
-
-  sink("DESeq2_de_genes_summary.txt")
-  cat(paste0("DESeq2 results summary for comparison of conditions ",condsToCompare[1]," to ",condsToCompare[2],"\n"))
-  cat(paste0("\nNumber of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off\n"))
-  summary(deseq_obj_comp_res, alpha=p_value_threshold)
-  cat(paste0("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), "\n"))
-  print(noquote(tmpMatrix))
-  cat("\nUsed tests\n")
-  write.table(mcols(deseq_obj_comp_res)$description, col.names=F, row.names=F)
-  cat("\n\nResult summary without filtering (low counts, outliers): \n\n")
-  cat(paste0("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off\n"))
-  summary(deseq_obj_comp_res_no_filt, alpha=p_value_threshold)
-  cat(paste0("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2),"\n"))
-  print(noquote(tmpMatrix_no_filt))
-  sink()
+  fwrite(comp_res_summary, "DESeq2_de_genes_summary.tsv", sep="\t")
+  write(paste0("# ",mcols(deseq_obj_comp_res)$description), "DESeq2_de_genes_summary.tsv", ncolumns = 1, append = T)
 
   # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
   setcolorder(comp_res,c("Ensembl_Id","baseMean","log2FoldChange","lfcSE","pvalue","padj","significant_DE","Feature_name","biotype"))
   setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
-  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
+  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange","abs_no_filter_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")
 
   setwd(orig_dir)
@@ -559,7 +527,7 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
     #ma plot
 
     ma <- ggmaplot(comp_res, main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
-                   fdr = p_value_threshold, fc = lfc_threshold, size = 0.5,
+                   fdr = p_value_threshold, fc = 2^lfc_threshold, size = 0.5,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
                    legend = "top", top = TOP,
@@ -616,7 +584,7 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
     #ma plot
 
     ma <- ggmaplot(comp_res[,.(Feature_name,baseMean,padj = no_filter_padj,log2FoldChange = no_filter_log2FoldChange)], main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
-                   fdr = p_value_threshold, fc = lfc_threshold, size = 0.4,
+                   fdr = p_value_threshold, fc = 2^lfc_threshold, size = 0.4,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
                    legend = "top", top = TOP,
