@@ -81,8 +81,8 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   setorder(experiment_design_dt,condition,patient)
   
   #save sample names to control with lib.sizes
-  dsamples<-as.data.frame(d$samples)
-  dsamples$sample_name<-rownames(dsamples)
+  dsamples<-as.data.table(d$samples, keep.rownames = T)
+  setnames(dsamples, "rn", "sample_name")
   fwrite(merge(experiment_design_dt, dsamples, by.x=c("sample_name","condition"), by.y=c("sample_name","group"), all=F),"detail_results/edgeR_design_control.txt",sep = "\t")
 
   experiment_design_dt <- prepare_colors_and_shapes(experiment_design_dt)
@@ -226,16 +226,16 @@ get_comparison_specific_edgeR_table <- function(fit_tgw,d,count_dt,condsToCompar
   setnames(resultsTbl.tgw,compared_samples,paste0(compared_samples,"_normCounts"))
   resultsTbl.tgw <- cbind(resultsTbl.tgw,d$counts[wh.rows.tgw,compared_samples])
   setnames(resultsTbl.tgw,compared_samples,paste0(compared_samples,"_rawCounts"))
-  resultsTbl.tgw[,abs_logFC := abs(logFC)]
+  resultsTbl.tgw[,abs_log2FoldChange := abs(logFC)]
 
   setnames(resultsTbl.tgw,c("logFC","PValue","FDR"),c("log2FoldChange","pvalue","padj"))
   resultsTbl.tgw[,UpDown := NULL]
   
-  resultsTbl.tgw[,significant_DE := padj < p_value_threshold & abs_logFC > lfc_threshold]
+  resultsTbl.tgw[,significant_DE := padj < p_value_threshold & abs_log2FoldChange > lfc_threshold]
   resultsTbl.tgw<-merge(unique(count_dt[,.(Ensembl_Id,Feature_name,biotype)]),resultsTbl.tgw,by="Feature_name")
   resultsTbl.tgw[,baseMean := exp(logCPM)]
-  setcolorder(resultsTbl.tgw,c("Ensembl_Id","baseMean","log2FoldChange","LR","pvalue","padj","significant_DE","Feature_name","biotype","logCPM","tgw.Disp","abs_logFC"))
-  setorder(resultsTbl.tgw,padj,pvalue,-abs_logFC,-logCPM,na.last = T)
+  setcolorder(resultsTbl.tgw,c("Ensembl_Id","baseMean","log2FoldChange","LR","pvalue","padj","significant_DE","Feature_name","biotype","logCPM","tgw.Disp","abs_log2FoldChange"))
+  setorder(resultsTbl.tgw,padj,pvalue,-abs_log2FoldChange,-logCPM,na.last = T)
 
   fwrite(x = resultsTbl.tgw, file = "edgeR.tsv", sep="\t")
   
@@ -268,6 +268,20 @@ create_comparison_specific_edgeR_results <- function(edgeR_comp_res,lrt_tgw,cond
   if(TOP==1){ # Set range for naming the samples - help to avoid naming of samples even if there is no DE gene; THIS ERROR IS OK WHEN WE HAVE 0 DE GENES Error in text.default(res[RANGE, ]$log2FoldChange, -log(res[RANGE, ]$padj,  : zero-length 'labels' specified
     system("touch ONLY_ONE_DE_GENE_FOUND")
   }
+
+  edgeR_comp_res_summary <- edgeR_comp_res[, .(test = "edgeR",
+               total = length(Feature_name),
+               na = length(Feature_name[is.na(padj)==TRUE]),
+               not_sig = length(Feature_name[na.omit(padj) >= p_value_threshold]),
+               sig = length(Feature_name[na.omit(padj) < p_value_threshold]),
+               sig_up = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange > 0]),
+               sig_down = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange < 0]),
+               sig_lfc = length(Feature_name[na.omit(padj) < p_value_threshold & abs_log2FoldChange >= lfc_threshold]),
+               sig_lfc_up = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange >= lfc_threshold]),
+               sig_lfc_down = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange <= -lfc_threshold]))]
+
+  fwrite(edgeR_comp_res_summary, "detail_results/edgeR_de_genes_summary.tsv", sep="\t")
+
 
   sink("detail_results/edgeR_de_genes_summary.txt")
   print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off", sep=""))
