@@ -497,14 +497,14 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
   setorder(comp_res,padj,-abs_log2FoldChange,na.last = T) # Make sure res is ordered by adj.p-value
 
   if(TOP > 0){
-
+    options(ggrepel.max.overlaps = 2*TOP)
     #volcano plot
 
     comp_res[,sig := ifelse(padj < p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig")]
     p <- ggplot(comp_res[!is.na(padj)], aes(log2FoldChange, -log10(padj))) +
       geom_point(aes(col=sig), size=0.5) +
       scale_color_manual(values=c("black", "red")) +
-      geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
+      geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3, max.overlaps = 2*TOP)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
       ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
@@ -555,13 +555,14 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
     TOP<-TOP_BCKP
     TOP <- min(TOP,sum(comp_res$no_filter_significant_DE))
     RANGE <- seq_len(TOP)
+    options(ggrepel.max.overlaps = 2*TOP)
 
     #volcano plot
 
     p <- ggplot(comp_res[!is.na(padj)], aes(no_filter_log2FoldChange, -log10(no_filter_padj))) +
       geom_point(aes(col=sig), size=0.5) +
       scale_color_manual(values=c("black", "red")) +
-      geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3)+
+      geom_text_repel(data=comp_res[RANGE,], aes(label=Feature_name), size=3, max.overlaps = 2*TOP)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
       ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +

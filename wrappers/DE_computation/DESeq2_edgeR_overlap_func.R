@@ -8,7 +8,26 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   vennTable <- merge(comp_res[,.(Feature_name,DESeq2 = significant_DE * sign(log2FoldChange),DESeq2_padj = padj,DESeq2_log2FoldChange = log2FoldChange)],
                         edgeR_comp_res[,.(Feature_name,edgeR = significant_DE * sign(log2FoldChange),edgeR_padj = padj,edgeR_log2FoldChange = log2FoldChange)],by = "Feature_name")
   
-   
+  upsetTable <- merge(comp_res[,.(Feature_name, DESeq2_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
+                                  DESeq2_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0),
+                                  DESeq2_no_filter_up = ifelse(no_filter_significant_DE * sign(log2FoldChange) == 1,1,0),
+                                  DESeq2_no_filter_down = ifelse(no_filter_significant_DE * sign(log2FoldChange) == -1,1,0))],
+                      edgeR_comp_res[,.(Feature_name, edgeR_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
+                                        edgeR_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0))],by = "Feature_name")
+
+  upsetPlot <- upset(upsetTable,
+                     nintersects = NA,
+                     nsets = 6,
+                     order.by = "freq",
+                     decreasing = T,
+                     text.scale = 1.2
+                     )
+
+  pdf(file="overlap_DESeq2_edgeR_upset.pdf")
+  upsetPlot
+  dev.off()
+
+
   TestResultMatrix <- as.matrix(vennTable[,c("DESeq2","edgeR")],rownames = vennTable$Feature_name)
   TestResultMatrix <- abs(TestResultMatrix)
   

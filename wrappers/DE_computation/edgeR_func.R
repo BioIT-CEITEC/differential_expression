@@ -296,11 +296,13 @@ create_comparison_specific_edgeR_results <- function(edgeR_comp_res,lrt_tgw,cond
   ### EdgeR volcano
   
   if(TOP > 0){
+    options(ggrepel.max.overlaps = 2*TOP)
+
     edgeR_comp_res[,sig := ifelse(padj < p_value_threshold, paste0("padj<", p_value_threshold), "Not Sig")]
     p <- ggplot(edgeR_comp_res[!is.na(padj)], aes(log2FoldChange, -log10(padj))) +
       geom_point(aes(col=sig), size=0.5) +
       scale_color_manual(values=c("black", "red")) +
-      geom_text_repel(data=edgeR_comp_res[RANGE,], aes(label=Feature_name), size=3)+
+      geom_text_repel(data=edgeR_comp_res[RANGE,], aes(label=Feature_name), size=3, max.overlaps = 2*TOP)+
       geom_vline(xintercept = 0) +
       geom_vline(xintercept = c(lfc_threshold, -lfc_threshold), linetype = "longdash", colour="blue") +
       ggtitle(paste("Volcanoplot ",condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes", sep="")) +
