@@ -48,8 +48,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     
     
   } else {
-    # load(counts_file)
-    load("DE_RSEM/complete_RSEM_table.RData")
+    load(counts_file)
+    #load("DE_RSEM/complete_RSEM_table.RData")
     colnames(txi$counts) <- make.names(colnames(txi$counts))
     colnames(txi$length) <- make.names(colnames(txi$length))
     colnames(txi$abundance) <- make.names(colnames(txi$abundance))
@@ -64,7 +64,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     
     # Keep only non-zero expressed genes that are in ensembl DB
     #   If gene/isoform has only counts 0.x it will be kept in the output but will have 0 counts in final DE tables
-    keep<-rowSums(txi$counts)>0 & rownames(txi$counts) %in% ensembl_gene_tab$Geneid
+    keep<-rowSums(txi$counts)>0 & rownames(txi$counts) %in% gtf_gene_tab$Geneid
     
     txi$abundance<-txi$abundance[keep,]
     txi$counts<-txi$counts[keep,]
@@ -78,10 +78,10 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     count_dt<-as.data.table(txi$counts,keep.rownames = T)
     setnames(count_dt,"rn","Geneid")
     
-    #rename to Gene names from Ensemble
-    rownames(txi$abundance) <- ensembl_gene_tab[rownames(txi$abundance)]$Feature_name
-    rownames(txi$counts) <- ensembl_gene_tab[rownames(txi$counts)]$Feature_name
-    rownames(txi$length) <- ensembl_gene_tab[rownames(txi$length)]$Feature_name
+    #rename to Gene names from Ensembl
+    rownames(txi$abundance) <- gtf_gene_tab[rownames(txi$abundance)]$Feature_name
+    rownames(txi$counts) <- gtf_gene_tab[rownames(txi$counts)]$Feature_name
+    rownames(txi$length) <- gtf_gene_tab[rownames(txi$length)]$Feature_name
     
     txi$length[txi$length == 0] <- 1 # If gene has length 0 replace it with 1 to avoid error later, might be source of bias and/or error; https://support.bioconductor.org/p/84304/
     
@@ -100,7 +100,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   count_dt <- count_dt[sum_count > 0,]
   count_dt <- merge(experiment_design[,.(sample_name, condition, patient)],count_dt,by = "sample_name")
   setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count"))
-  setkey(count_dt,Feature_name,condition,patient,sample_name)
+  setkey(count_dt,Ensembl_Id,condition,patient,sample_name)
   
   return(list(count_dt,txi))
 }

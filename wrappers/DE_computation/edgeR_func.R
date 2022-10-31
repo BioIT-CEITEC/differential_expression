@@ -315,7 +315,7 @@ create_comparison_specific_edgeR_results <- function(edgeR_comp_res,lrt_tgw,cond
     dev.off()
     
     ma <- ggmaplot(edgeR_comp_res, main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes (edgeR)"),
-                   fdr = p_value_threshold, fc = lfc_threshold, size = 0.5,
+                   fdr = p_value_threshold, fc = 2^lfc_threshold, size = 0.5,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(edgeR_comp_res$Feature_name),
                    legend = "top", top = TOP,

@@ -585,7 +585,7 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
     #ma plot
 
     ma <- ggmaplot(comp_res[,.(Feature_name,baseMean,padj = no_filter_padj,log2FoldChange = no_filter_log2FoldChange)], main =  paste0("MA plot ", condsToCompare[1], " vs ", condsToCompare[2], " top ", TOP, " genes"),
-                   fdr = p_value_threshold, fc = 2^lfc_threshold, size = 0.4,
+                   fdr = p_value_threshold, fc = 2^lfc_threshold, size = 0.5,
                    palette = c("#B31B21", "#1465AC", "darkgray"),
                    genenames = as.vector(comp_res$Feature_name),
                    legend = "top", top = TOP,
