@@ -79,10 +79,10 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     setnames(count_dt,"rn","Geneid")
     
     #rename to Gene names from Ensembl
-    rownames(txi$abundance) <- gtf_gene_tab[rownames(txi$abundance)]$Feature_name
-    rownames(txi$counts) <- gtf_gene_tab[rownames(txi$counts)]$Feature_name
-    rownames(txi$length) <- gtf_gene_tab[rownames(txi$length)]$Feature_name
-    
+    # rownames(txi$abundance) <- gtf_gene_tab[rownames(txi$abundance)]$Feature_name
+    # rownames(txi$counts) <- gtf_gene_tab[rownames(txi$counts)]$Feature_name
+    # rownames(txi$length) <- gtf_gene_tab[rownames(txi$length)]$Feature_name
+    #
     txi$length[txi$length == 0] <- 1 # If gene has length 0 replace it with 1 to avoid error later, might be source of bias and/or error; https://support.bioconductor.org/p/84304/
     
     # cts <- txi$counts

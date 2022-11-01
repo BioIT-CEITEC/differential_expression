@@ -211,12 +211,12 @@ get_comparison_specific_edgeR_table <- function(fit_tgw,d,count_dt,condsToCompar
   lrt_tgw<-glmLRT(fit_tgw, contrast=my.contrasts[, "contrast"]) # If we have 3 conditions and want to compare 3 vs 2 we set contrast=c(0, -1, 1), if we want to compare 3 vs 1 or 2 vs 1 we just set coef=3 or coef=2, respectively; some more examples of contrast https://www.biostars.org/p/110861/
   
   resultsTbl.tgw<-as.data.table(topTags(lrt_tgw, n=nrow(lrt_tgw$table), adjust.method = "BH", sort.by = "p.value")$table,keep.rownames = T) # Extract all genes
-  setnames(resultsTbl.tgw,"rn","Feature_name")
+  setnames(resultsTbl.tgw,"rn","Ensembl_Id")
   
   ####################################################################################################
   # Store row number that match between results and raw counts to include raw counts later in the
   #   output
-  wh.rows.tgw<-match(resultsTbl.tgw$Feature_name, rownames(d$counts))
+  wh.rows.tgw<-match(resultsTbl.tgw$Ensembl_Id, rownames(d$counts))
   
   # Combine results with extracted DE genes, common dispersion, UpDown values, normalized counts and
   #   raw counts
@@ -232,7 +232,7 @@ get_comparison_specific_edgeR_table <- function(fit_tgw,d,count_dt,condsToCompar
   resultsTbl.tgw[,UpDown := NULL]
   
   resultsTbl.tgw[,significant_DE := padj < p_value_threshold & abs_log2FoldChange > lfc_threshold]
-  resultsTbl.tgw<-merge(unique(count_dt[,.(Ensembl_Id,Feature_name,biotype)]),resultsTbl.tgw,by="Feature_name")
+  resultsTbl.tgw<-merge(unique(count_dt[,.(Ensembl_Id,Feature_name,biotype)]),resultsTbl.tgw,by="Ensembl_Id")
   resultsTbl.tgw[,baseMean := exp(logCPM)]
   setcolorder(resultsTbl.tgw,c("Ensembl_Id","baseMean","log2FoldChange","LR","pvalue","padj","significant_DE","Feature_name","biotype","logCPM","tgw.Disp","abs_log2FoldChange"))
   setorder(resultsTbl.tgw,padj,pvalue,-abs_log2FoldChange,-logCPM,na.last = T)
@@ -271,14 +271,14 @@ create_comparison_specific_edgeR_results <- function(edgeR_comp_res,lrt_tgw,cond
 
   edgeR_comp_res_summary <- edgeR_comp_res[, .(test = "edgeR",
                total = length(Feature_name),
-               na = length(Feature_name[is.na(padj)==TRUE]),
-               not_sig = length(Feature_name[na.omit(padj) >= p_value_threshold]),
-               sig = length(Feature_name[na.omit(padj) < p_value_threshold]),
-               sig_up = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange > 0]),
-               sig_down = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange < 0]),
-               sig_lfc = length(Feature_name[na.omit(padj) < p_value_threshold & abs_log2FoldChange >= lfc_threshold]),
-               sig_lfc_up = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange >= lfc_threshold]),
-               sig_lfc_down = length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange <= -lfc_threshold]))]
+               na = sum(is.na(padj)),
+               not_sig = sum(!is.na(padj) & padj >= p_value_threshold),
+               sig = sum(!is.na(padj) & padj < p_value_threshold),
+               sig_up = sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange > 0),
+               sig_down = sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange < 0),
+               sig_lfc = sum(!is.na(padj) & padj < p_value_threshold & abs_log2FoldChange >= lfc_threshold),
+               sig_lfc_up = sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange >= lfc_threshold),
+               sig_lfc_down = sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange <= -lfc_threshold))]
 
   fwrite(edgeR_comp_res_summary, "detail_results/edgeR_de_genes_summary.tsv", sep="\t")
 

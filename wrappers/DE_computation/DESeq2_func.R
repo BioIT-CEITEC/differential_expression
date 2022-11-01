@@ -2,10 +2,10 @@
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
 count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec){
-  res <- dcast.data.table(count_dt,Feature_name ~ condition + sample_name,value.var = value_var)
+  res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var)
   names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
   mat <- as.matrix(res[,-1,with = F],rownames.force = T)
-  rownames(mat) <- res$Feature_name
+  rownames(mat) <- res$Ensembl_Id
   return(mat)
 }
 
@@ -36,9 +36,9 @@ get_title_from_design <- function(experiment_design,prefix = "",suffix = "",non_
 prepare_colors_and_shapes <- function(experiment_design){
 
   if(length(unique(experiment_design$condition)) >= 3){
-    num.conds = length(unique(experiment_design$condition))
+    num.conds <- length(unique(experiment_design$condition))
   }else{
-    num.conds = 3
+    num.conds <- 3
   }
   experiment_design[,cond_colours := brewer.pal(num.conds, "Set1")[experiment_design$condition]]
   # cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
@@ -421,40 +421,40 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
   comp_res[,abs_no_filter_log2FoldChange := abs(no_filter_log2FoldChange)]
-  setnames(comp_res,"rn","Feature_name")
-  comp_res <- merge(unique(count_dt[,.(Feature_name,Ensembl_Id,biotype)]),comp_res,by = "Feature_name")
+  setnames(comp_res,"rn","Ensembl_Id")
+  comp_res <- merge(unique(count_dt[,.(Ensembl_Id,Feature_name,biotype)]),comp_res,by = "Ensembl_Id")
   comp_res[,significant_DE := F]
   comp_res[(abs_log2FoldChange >= lfc_threshold) & (padj < p_value_threshold) & !is.na(padj),significant_DE := T]
   comp_res[,no_filter_significant_DE := F]
   comp_res[(abs_no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
 
-  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ condition + sample_name,value.var = "normcounts")
+  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "normcounts")
   names(normcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(normcounts))
   setnames(normcounts,names(normcounts)[-1],paste0(names(normcounts)[-1],"_normCounts"))
-  comp_res <- merge.data.table(comp_res,normcounts,by = "Feature_name")
-  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Feature_name ~ condition + sample_name,value.var = "rawcounts")
+  comp_res <- merge.data.table(comp_res,normcounts,by = "Ensembl_Id")
+  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "rawcounts")
   names(rawcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(rawcounts))
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
-  comp_res <- merge.data.table(comp_res,rawcounts,by = "Feature_name")
+  comp_res <- merge.data.table(comp_res,rawcounts,by = "Ensembl_Id")
 
   comp_res_summary <- comp_res[, .(test = c("DESeq2","DESeq2_no_filter"),
                total = c(length(Feature_name),length(Feature_name)),
-               na = c(length(Feature_name[is.na(padj)==TRUE]),
-                      length(Feature_name[is.na(no_filter_padj)==TRUE])),
-               not_sig = c(length(Feature_name[na.omit(padj) >= p_value_threshold]),
-                           length(Feature_name[na.omit(no_filter_padj) >= p_value_threshold])),
-               sig = c(length(Feature_name[na.omit(padj) < p_value_threshold]),
-                        length(Feature_name[na.omit(no_filter_padj) < p_value_threshold])),
-               sig_up = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange > 0]),
-                           length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange > 0])),
-               sig_down = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange < 0]),
-                             length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange < 0])),
-               sig_lfc = c(length(Feature_name[na.omit(padj) < p_value_threshold & abs_log2FoldChange >= lfc_threshold]),
-                            length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & abs_no_filter_log2FoldChange >= lfc_threshold])),
-               sig_lfc_up = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange >= lfc_threshold]),
-                               length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange >= lfc_threshold])),
-               sig_lfc_down = c(length(Feature_name[na.omit(padj) < p_value_threshold & log2FoldChange <= -lfc_threshold]),
-                                length(Feature_name[na.omit(no_filter_padj) < p_value_threshold & no_filter_log2FoldChange <= -lfc_threshold])))]
+               na = c(sum(is.na(padj)),
+                      sum(is.na(no_filter_padj))),
+               not_sig = c(sum(!is.na(padj) & padj >= p_value_threshold),
+                           sum(!is.na(no_filter_padj) & no_filter_padj >= p_value_threshold)),
+               sig = c(sum(!is.na(padj) & padj < p_value_threshold),
+                        sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold)),
+               sig_up = c(sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange > 0),
+                           sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold & no_filter_log2FoldChange > 0)),
+               sig_down = c(sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange < 0),
+                             sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold & no_filter_log2FoldChange < 0)),
+               sig_lfc = c(sum(!is.na(padj) & padj < p_value_threshold & abs_log2FoldChange >= lfc_threshold),
+                            sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold & abs_no_filter_log2FoldChange >= lfc_threshold)),
+               sig_lfc_up = c(sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange >= lfc_threshold),
+                               sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold & no_filter_log2FoldChange >= lfc_threshold)),
+               sig_lfc_down = c(sum(!is.na(padj) & padj < p_value_threshold & log2FoldChange <= -lfc_threshold),
+                                sum(!is.na(no_filter_padj) & no_filter_padj < p_value_threshold & no_filter_log2FoldChange <= -lfc_threshold)))]
 
   fwrite(comp_res_summary, "DESeq2_de_genes_summary.tsv", sep="\t")
   write(paste0("# ",mcols(deseq_obj_comp_res)$description), "DESeq2_de_genes_summary.tsv", ncolumns = 1, append = T)

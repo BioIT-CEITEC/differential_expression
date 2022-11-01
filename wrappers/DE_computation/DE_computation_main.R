@@ -89,7 +89,8 @@ run_all <- function(args){
     condsToCompare <- strsplit(selected_comparison,"_vs_")[[1]]
     
     dir.create(paste0(output_dir,"/",selected_comparison), recursive = T,showWarnings = F)
-    
+    print(selected_comparison)
+
     if(normalize_data_per_comparison){
       comparison_experiment_design <- experiment_design[condition %in% condsToCompare]
       
