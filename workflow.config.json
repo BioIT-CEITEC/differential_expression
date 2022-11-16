@@ -1,8 +1,8 @@
 {
   "workflow_description": {
     "name":"differential_expression",
-    "version": 1.0,
-    "label":"Differential expression VB2",
+    "version": 2.0,
+    "label":"Differential expression",
     "type":"differential_expression",
     "inputs":[
       "qc_reports/{sample}/*/{sample}.*.*"
