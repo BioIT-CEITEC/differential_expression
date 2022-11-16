@@ -1,3 +1,26 @@
+rule creat_salmon_map_table:
+    input:  salmon = expand("qc_reports/{sample}/salmon_map/{sample}.salmon_map.sf",sample=sample_tab.sample_name),
+            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+    output: salmon = "DE_salmon_map/complete_salmon_map_table.RData"
+    log:    "logs/DE/create_salmon_map_table.log"
+    conda:  "../wrappers/analysis_salmon_table/env.yaml"
+    script: "../wrappers/analysis_salmon_table/script.py"
+
+rule creat_salmon_align_table:
+    input:  salmon = expand("qc_reports/{sample}/salmon_aln/{sample}.salmon_aln.sf",sample=sample_tab.sample_name),
+            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+    output: salmon = "DE_salmon_align/complete_salmon_align_table.RData"
+    log:    "logs/DE/create_salmon_align_table.log"
+    conda:  "../wrappers/analysis_salmon_table/env.yaml"
+    script: "../wrappers/analysis_salmon_table/script.py"
+
+rule creat_kallisto_table:
+    input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.tsv",sample=sample_tab.sample_name),
+            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+    output: kallisto = "DE_kallisto/complete_kallisto_table.RData"
+    log:    "logs/DE/create_kallisto_table.log"
+    conda:  "../wrappers/analysis_kallisto_table/env.yaml"
+    script: "../wrappers/analysis_kallisto_table/script.py"
 
 rule creat_RSEM_table:
     input:  RSEM = expand("qc_reports/{sample}/RSEM/{sample}.genes.results",sample=sample_tab.sample_name),
@@ -15,10 +38,10 @@ rule creat_feature_count_table:
     script: "../wrappers/analysis_feature_count_table/script.py"
 
 def count_tab_input(wildcards):
-    if wildcards.analysis_type == "RSEM":
-        suffix = "RData"
-    else:
+    if wildcards.analysis_type == "feature_count":
         suffix = "tsv"
+    else:
+        suffix = "RData"
 
     return expand("DE_{analysis_type}/complete_{analysis_type}_table.{suffix}",analysis_type=wildcards.analysis_type,suffix=suffix)[0]
 

@@ -1,5 +1,5 @@
 #############################################################
-# wrapper for rule: analysis_kallisto_table
+# wrapper for rule: creat_kallisto_table
 #############################################################
 import os
 from snakemake.shell import shell
@@ -13,7 +13,7 @@ f.close()
 
 command = "$CONDA_PREFIX/bin/Rscript "+os.path.abspath(os.path.dirname(__file__))+"/combine_kallisto_tabs.R "+\
             snakemake.output.kallisto + " " +\
-            snakemake.params.tx2gene + " " +\
+            snakemake.input.gtf + " " +\
             " ".join(snakemake.input.kallisto) + " >> " + log_filename + " 2>&1 "
 
 f = open(log_filename, 'a+')

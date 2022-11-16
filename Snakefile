@@ -10,10 +10,13 @@ configfile: "config.json"
 GLOBAL_REF_PATH = config["globalResources"]
 
 # setting organism from reference
-f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference.json"),)
+f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference2.json"),)
 reference_dict = json.load(f)
 f.close()
-config["organism"] = [organism_name.lower().replace(" ","_") for organism_name in reference_dict.keys() if isinstance(reference_dict[organism_name],dict) and config["reference"] in reference_dict[organism_name].keys()][0]
+config["species_name"] = [organism_name for organism_name in reference_dict.keys() if isinstance(reference_dict[organism_name],dict) and config["reference"] in reference_dict[organism_name].keys()][0]
+config["organism"] = config["species_name"].split(" (")[0].lower().replace(" ","_")
+if len(config["species_name"].split(" (")) > 1:
+    config["species"] = config["species_name"].split(" (")[1].replace(")","")
 
 ##### Config processing #####
 # Folders
@@ -64,6 +67,12 @@ if config["feature_count"]:
     selected_analysis_types.append("feature_count")
 if config["RSEM"]:
     selected_analysis_types.append("RSEM")
+if config["salmon_map"]:
+    selected_analysis_types.append("salmon_map")
+if config["salmon_align"]:
+    selected_analysis_types.append("salmon_align")
+if config["kallisto"]:
+    selected_analysis_types.append("kallisto")
 
 if len(selected_analysis_types) == 0:
     raise ValueError("There was no RSEM or feature_count used in previous analysis!")
@@ -72,7 +81,7 @@ if len(selected_analysis_types) == 0:
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "feature_count|RSEM",
+     analysis_type= "feature_count|RSEM|salmon_map|salmon_align|kallisto",
      #data_type= "tsv|RData"
 
 
@@ -84,6 +93,12 @@ def input_all(wildcards):
         input["feature_count"] = "DE_feature_count/final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "DE_RSEM/final_report.html"
+    if config["salmon_map"]:
+        input["salmon_map"] = "DE_salmon_map/final_report.html"
+    if config["salmon_align"]:
+        input["salmon_align"] = "DE_salmon_align/final_report.html"
+    if config["kallisto"]:
+        input["kallisto"] = "DE_kallisto/final_report.html"
     return input
 
 rule all:

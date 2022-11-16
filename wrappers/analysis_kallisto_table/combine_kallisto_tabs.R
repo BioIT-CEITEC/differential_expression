@@ -1,12 +1,12 @@
 library(tximport)
 library(data.table)
-library(readr)
-library(rhdf5)
+library(rtracklayer)
 
 run_all <- function(args){
   output_file <- args[1]
-  tx2gene_file <- args[2]
-  tx2gene <- read_delim(file.path(tx2gene_file),delim='\t')
+  gtf_file <- args[2]
+  gtf <- as.data.table(rtracklayer::import(gtf_file, feature.type = "transcript"))
+  tx2gene <- unique(gtf[,.(transcript_id , gene_id)])
   file_list <- tail(args,-2)
   sample_names <- gsub(".*kallisto/(.*).kallisto.tsv","\\1",file_list)
   names(file_list) <- sample_names

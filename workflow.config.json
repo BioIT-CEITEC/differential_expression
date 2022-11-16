@@ -13,7 +13,10 @@
     ],
     "outputs_optional":[
       "DE_RSEM",
-      "DE_feature_count"
+      "DE_feature_count",
+      "DE_salmon_map",
+      "DE_salmon_align",
+      "DE_kallisto"
     ],
     "report_index": "final_report.html",
     "reports":[
@@ -27,7 +30,10 @@
   "requested_params": [
     "reference",
     "feature_count",
-    "RSEM"
+    "RSEM",
+    "salmon_map",
+    "salmon_align",
+    "kallisto"
   ],
   "gui_params" : {
     "primary": {
