@@ -1,7 +1,7 @@
 
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
-count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec){
+count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec){
   res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var)
   names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
   mat <- as.matrix(res[,-1,with = F],rownames.force = T)
@@ -109,7 +109,7 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   return(list(dds,count_dt))
 }
 
-create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt){
+create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt,condition_to_compare_vec){
 
   #set output dir but remember where to return
   orig_dir <- getwd()
@@ -471,7 +471,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
 }
 
 
-create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,condsToCompare,output_dir,paired_samples,TOP,p_value_threshold,lfc_threshold){
+create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,condsToCompare,output_dir,paired_samples,TOP,p_value_threshold,lfc_threshold,condition_to_compare_vec){
 
 
   ##DESeq2 comparison specific graphic ploting

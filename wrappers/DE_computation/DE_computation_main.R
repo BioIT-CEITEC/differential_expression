@@ -67,11 +67,11 @@ run_all <- function(args){
   if(!normalize_data_per_comparison){
     #DESeq2 part
     ################
-    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec)
+    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
     dds <- res_list[[1]]
     count_dt <- res_list[[2]]
     
-    create_normalization_specific_DESeq2_results(paste0(output_dir,"/all_condition_results"),dds,count_dt)
+    create_normalization_specific_DESeq2_results(paste0(output_dir,"/all_condition_results"),dds,count_dt,condition_to_compare_vec = condition_to_compare_vec)
     
     #edgeR part
     ################
@@ -98,7 +98,7 @@ run_all <- function(args){
       res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
-      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare])
+      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec)
       
       #edgeR part
       ################
@@ -111,7 +111,7 @@ run_all <- function(args){
       
       #DESeq2 part
       ################
-      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison,"/detail_results"),dds,count_dt[condition %in% condsToCompare])
+      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison,"/detail_results"),dds,count_dt[condition %in% condsToCompare], condition_to_compare_vec = condition_to_compare_vec)
       
       #edgeR part
       ################
@@ -121,7 +121,7 @@ run_all <- function(args){
     #DESeq2 part
     ################
     comp_res <- get_comparison_specific_DESeq2_table(dds,count_dt,experiment_design,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison),p_value_threshold,lfc_threshold)
-    create_comparison_specific_DESeq2_results(comp_res,dds,count_dt,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison),paired_samples,TOP,p_value_threshold,lfc_threshold)
+    create_comparison_specific_DESeq2_results(comp_res,dds,count_dt,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison),paired_samples,TOP,p_value_threshold,lfc_threshold,condition_to_compare_vec = condition_to_compare_vec)
     
     #edgeR part
     ################
