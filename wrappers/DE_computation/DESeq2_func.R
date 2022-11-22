@@ -35,8 +35,8 @@ get_title_from_design <- function(experiment_design,prefix = "",suffix = "",non_
 
 prepare_colors_and_shapes <- function(experiment_design){
 
-  if(length(unique(experiment_design$condition)) >= 3){
-    num.conds <- length(unique(experiment_design$condition))
+  if(length(unique(levels(experiment_design$condition))) >= 3){
+    num.conds <- length(unique(levels(experiment_design$condition)))
   }else{
     num.conds <- 3
   }
