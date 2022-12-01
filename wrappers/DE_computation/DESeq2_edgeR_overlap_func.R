@@ -16,7 +16,7 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                                         edgeR_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0))],by = "Ensembl_Id")
 
   upsetTable[,test:=1]
-  setcolorder(upsetTable,c(Ensembl_Id,test))
+  setcolorder(upsetTable,c("Ensembl_Id","test"))
 
   upsetPlot <- upset(upsetTable,
                      nintersects = NA,
