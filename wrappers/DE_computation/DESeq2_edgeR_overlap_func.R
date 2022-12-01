@@ -27,8 +27,9 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                      main.bar.color = "black"
                      )
 
-  pdf(file="overlap_DESeq2_edgeR_upset.pdf")
+  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units = "in",bg = "white",res = 300)
   upsetPlot
+  dev.off()
   dev.off()
 
 
