@@ -18,6 +18,9 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   upsetTable[,test:=1]
   setcolorder(upsetTable,c("Ensembl_Id","test"))
 
+  dev.off()
+
+  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300)
   upsetPlot <- upset(upsetTable,
                      nintersects = NA,
                      nsets = 6,
@@ -26,11 +29,8 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                      text.scale = 1.2,
                      main.bar.color = "black"
                      )
+  dev.off()
 
-  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units = "in",bg = "white",res = 300)
-  upsetPlot
-  dev.off()
-  dev.off()
 
 
   TestResultMatrix <- as.matrix(vennTable[,c("DESeq2","edgeR")],rownames = vennTable$Feature_name)
