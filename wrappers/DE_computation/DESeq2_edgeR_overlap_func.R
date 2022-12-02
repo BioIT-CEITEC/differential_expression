@@ -20,19 +20,6 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
 
   dev.off()
 
-  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300)
-  upsetPlot <- upset(upsetTable,
-                     nintersects = NA,
-                     nsets = 6,
-                     sets = c("DESeq2_up","DESeq2_no_filter_up","edgeR_up","edgeR_down","DESeq2_no_filter_down","DESeq2_down"),
-                     keep.order = T,
-                     text.scale = 1.2,
-                     main.bar.color = "black"
-                     )
-  dev.off()
-
-
-
   TestResultMatrix <- as.matrix(vennTable[,c("DESeq2","edgeR")],rownames = vennTable$Feature_name)
   TestResultMatrix <- abs(TestResultMatrix)
   
@@ -40,6 +27,17 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   par(oma=c(0,0,1,0), xpd=NA) # http://stackoverflow.com/questions/12402319/centring-legend-below-two-plots-in-r
   vennDiagram(vennCounts(TestResultMatrix), counts.col="black", main=paste("Overlap Between DESeq2 and edgeR results \nwith LogFC >= ",
                                                          round(lfc_threshold, 2), " and adj.pval ", p_value_threshold, sep=""))
+  dev.off()
+
+  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300)
+  UpSetR::upset(upsetTable,
+                     nintersects = NA,
+                     nsets = 6,
+                     sets = c("DESeq2_down","DESeq2_no_filter_down","edgeR_down","edgeR_up","DESeq2_no_filter_up","DESeq2_up"),
+                     keep.order = T,
+                     text.scale = 1.2,
+                     main.bar.color = "black"
+                     )
   dev.off()
   
   # Add gene names
