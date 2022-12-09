@@ -229,7 +229,7 @@ get_comparison_specific_edgeR_table <- function(fit_tgw,d,count_dt,condsToCompar
   resultsTbl.tgw[,abs_log2FoldChange := abs(logFC)]
 
   setnames(resultsTbl.tgw,c("logFC","PValue","FDR"),c("log2FoldChange","pvalue","padj"))
-  resultsTbl.tgw[,UpDown := NULL]
+  #resultsTbl.tgw[,UpDown := NULL]
   
   resultsTbl.tgw[,significant_DE := padj < p_value_threshold & abs_log2FoldChange > lfc_threshold]
   resultsTbl.tgw<-merge(unique(count_dt[,.(Ensembl_Id,Feature_name,biotype)]),resultsTbl.tgw,by="Ensembl_Id")

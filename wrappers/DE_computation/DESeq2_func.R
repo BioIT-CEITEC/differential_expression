@@ -40,7 +40,7 @@ prepare_colors_and_shapes <- function(experiment_design){
   }else{
     num.conds <- 3
   }
-  experiment_design[,cond_colours := brewer.pal(num.conds, "Set1")[experiment_design$condition]]
+  experiment_design[,cond_colours := c(brewer.pal(num.conds, "Dark2"),brewer.pal(num.conds, "Set2"),brewer.pal(num.conds, "Pastel2"))[experiment_design$condition]]
   # cond_shapes<-c("\u25A0","\u25B2","\u25C6","\u25CF","\u25BC","\u25B6","\u25C0","\u25A3","\u25C8","\u25C9","\u25E9","\u25EA")[]
   cond_shapes<-rep(c(16,15,18,3,4,1,0,5,17,2,6,8,11,12),4)
   cond_shapes_plotly <- rep(c("circle","square","diamond","cross","x","circle-open","square-open","diamond-open"),4)
