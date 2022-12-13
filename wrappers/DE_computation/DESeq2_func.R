@@ -3,7 +3,8 @@ hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
 count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec){
   res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var)
-  names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
+  #names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
+  names(res) <- names(res)
   mat <- as.matrix(res[,-1,with = F],rownames.force = T)
   rownames(mat) <- res$Ensembl_Id
   return(mat)
