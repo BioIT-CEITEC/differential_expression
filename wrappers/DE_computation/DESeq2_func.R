@@ -2,9 +2,9 @@
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
 count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec){
-  res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var)
-  #names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"_")), collapse = "|"), "", names(res))
-  names(res) <- names(res)
+  res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var, sep="::")
+  names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
+  #names(res) <- names(res)
   mat <- as.matrix(res[,-1,with = F],rownames.force = T)
   rownames(mat) <- res$Ensembl_Id
   return(mat)
@@ -67,10 +67,10 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
     #FeatureCount
     if(paired_samples==T){
       print("Using paired design in DESeq2")
-      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~patient+condition)
+      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,"count",condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~patient+condition)
     }else{
       print("Using simple design in DESeq2")
-      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~condition)
+      dds<-DESeqDataSetFromMatrix(countData = count_matrix_from_dt(count_dt,"count",condition_to_compare_vec = condition_to_compare_vec), colData = experiment_design, design = ~condition)
     }
   } else {
     #RSEM
