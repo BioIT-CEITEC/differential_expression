@@ -429,12 +429,12 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   comp_res[,no_filter_significant_DE := F]
   comp_res[(abs_no_filter_log2FoldChange >= lfc_threshold) & (no_filter_padj < p_value_threshold) & !is.na(no_filter_padj),no_filter_significant_DE := T]
 
-  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "normcounts")
-  names(normcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(normcounts))
+  normcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "normcounts",sep="::")
+  names(normcounts) <- gsub(paste(unlist(paste0(condsToCompare,"::")), collapse = "|"), "", names(normcounts))
   setnames(normcounts,names(normcounts)[-1],paste0(names(normcounts)[-1],"_normCounts"))
   comp_res <- merge.data.table(comp_res,normcounts,by = "Ensembl_Id")
-  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "rawcounts")
-  names(rawcounts) <- gsub(paste(unlist(paste0(condsToCompare,"_")), collapse = "|"), "", names(rawcounts))
+  rawcounts <- dcast.data.table(count_dt[condition %in% condsToCompare],formula = Ensembl_Id ~ condition + sample_name,value.var = "rawcounts",sep="::")
+  names(rawcounts) <- gsub(paste(unlist(paste0(condsToCompare,"::")), collapse = "|"), "", names(rawcounts))
   setnames(rawcounts,names(rawcounts)[-1],paste0(names(rawcounts)[-1],"_rawCounts"))
   comp_res <- merge.data.table(comp_res,rawcounts,by = "Ensembl_Id")
 
