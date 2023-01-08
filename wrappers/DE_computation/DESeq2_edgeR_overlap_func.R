@@ -18,7 +18,7 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   upsetTable[,test:=1]
   setcolorder(upsetTable,c("Ensembl_Id","test"))
 
-  dev.off()
+  if(!is.null(dev.list())) {dev.off()}
 
   TestResultMatrix <- as.matrix(vennTable[,c("DESeq2","edgeR")],rownames = vennTable$Feature_name)
   TestResultMatrix <- abs(TestResultMatrix)
