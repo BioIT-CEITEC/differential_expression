@@ -1,0 +1,525 @@
+---
+output:
+  bookdown::html_document2:
+    highlight: tango
+    number_sections: false
+    global_numbering: true
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+
+params:
+  config: snakemake.params.config
+
+---
+
+---
+title: DE results
+author:
+  - CEITEC Bioinformatics Core Facility
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r load-packages, include=FALSE}
+library(data.table)
+library(jsonlite)
+library(flextable)
+library(stringr)
+library(ggplot2)
+library(TidyMultiqc)
+library(tidyr)
+library(officer)
+library(plotly)
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+set_flextable_defaults(font.family = "Arial", font.size = 12, padding.top = 3, padding.bottom = 3)
+```
+
+```{r variables, results='asis', echo=FALSE}
+config_json <- as.data.table(fromJSON(txt = params$config))
+config_json[,condition := sapply(1:length(config_json$samples),function(x) config_json$samples[[x]]$condition)]
+config_json[,replicate := sapply(1:length(config_json$samples),function(x) config_json$samples[[x]]$replicate)]
+config_json[,full_name := sapply(1:length(config_json$samples),function(x) config_json$samples[[x]]$sample_name)]
+
+comparison <- unlist(strsplit(unique(config_json$comparison),split="\\|"))
+biotype <- unlist(strsplit(unique(config_json$biotype_list),split="\\|"))
+analysis_type <- data.table(analysis=unlist(strsplit(unique(config_json$analysis_type),split="\\|")))
+analysis_type <- analysis_type[,DE := paste0("DE_",analysis)] # feature_count is usually run by default
+analysis_type <- analysis_type[, name := analysis]
+analysis_type <- analysis_type[name == "feature_count", name := "featureCount"]
+analysis_type <- analysis_type[name == "kallisto", name := "Kallisto"]
+analysis_type <- analysis_type[name == "salmon_align", name := "Salmon (alignment mode)"]
+analysis_type <- analysis_type[name == "salmon_map", name := "Salmon (mapping mode)"]
+
+`%!in%` <- Negate(`%in%`)
+`%!like%` <- Negate(`%like%`)
+
+mRNA_DE_FOLDER_PATH <- paste0("../",analysis_type$DE,"/")
+INPUTFILES <- paste0("../qc_reports/")
+MQC_DATA <- paste0(INPUTFILES,"all_samples/","multiqc_data/")
+
+# set of colors for plot to look like multiqc
+highchart.v4 <- c("#7cb5ec", "#434348", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1")
+rseqc.palette <- c("#7cb5ec","#434348","#90ed7d","#f7a35c","#8085e9","#f15c80","#e4d354","#2b908f","#f45b5b","#91e8e1","#cccccc","#7f0000")
+biobloom.palette <- c("#7cb5ec","#434348","#90ed7d","#f7a35c","#8085e9","#f15c80","#e4d354","#2b908f","#f45b5b","#91e8e1","#148E0B","#FDE74C","#7f0000","#cccccc")
+star.palette <- c("#437bb1","#7cb5ec","#f7a35c","#e63491","#b1084c","#7f0000")
+
+# biobloom ref table
+biobloom_ref<-data.table(species=c("human","mouse","rat","budding yeast","fruit fly","dog","thale cress","rape","nematode"),
+                         ref=c("human_38","mouse","rat","yeast","fruit_fly","dog","A.thaliana","brassica","C.elegans"))
+biobloom_ref<-biobloom_ref[species==config_json$species[1],]
+
+```
+
+
+# DE results
+- For the DE analysis we used gene counts from the following tool(s): `r paste(analysis_type$name, collapse=", ")`.
+
+```{r de-plot-dt, echo=FALSE, results="asis"}
+plot.dt <- function(analysis.type = analysis_type$analysis, comp.folder = comparison, path.prefix = "../", path.suffix = "/report_data/", pattern1 = "volcanoplot.+png", pattern2 = "volcanoplot.+png"){
+  dt <- data.table(analysis.type=rep(analysis.type,length(comp.folder)))
+  setorder(dt, analysis.type)
+  dt <- dt[,DE:=paste0("DE_",analysis.type)]
+  dt <- dt[, comp.folder:=rep(comp.folder,length(unique(analysis.type)))]
+  dt <- dt[, path1:=list.files(paste0(path.prefix,DE,"/",comp.folder,path.suffix), pattern = pattern1, full.names = TRUE), by=.(DE,comp.folder)]
+  dt <- dt[, path2:=list.files(paste0(path.prefix,DE,"/",comp.folder,path.suffix), pattern = pattern2, full.names = TRUE), by=.(DE,comp.folder)]
+  dt <- dt[, path:=ifelse(is.na(path2) == FALSE,path2,path1)]
+  return(dt)
+}
+
+```
+
+## Expression-based quality check
+
+### Normalization {.tabset}
+
+```{r de-norm-count, echo=FALSE, out.width="80%", results="asis", dev="svg"}
+
+norm.plot<-function(analysis_type = analysis_type){
+  output<-cat("- Read counts for coding genes (mostly protein-coding genes) distribution is depicted in the following Figure(s).","\n")
+  output<-c(output,cat("- Post-normalization counts (~normalized expressions) can be controlled for unusual remaining differences in expression level between samples.","\n"))
+  output<-c(output,cat("- If the normalized expression is not similar between samples, it might be needed to sub-sample or remove sample(s) with too high expression difference.","\n\n"))
+
+  for(j in 1:length(analysis_type$analysis)){
+    output<-c(output,cat("#### ",analysis_type$name[j],"\n"))
+
+    if(config_json$keep_not_compared_samples_for_normalization[1] == TRUE){
+      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = "all_condition_results/",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
+    }else{
+      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = comparison, path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
+    }
+
+    for(i in 1:length(ppnc.files$path)){
+      output<-c(output,cat("<div align='center'><figure style='width:80%'><img src=",ppnc.files$path[i]," /><figcaption>Number of reads assigned to coding genes for all the samples before normalization (raw counts) and after normalization (normalized counts).</figcaption></figure></div>"))
+      output<-c(output,cat("\n\n"))
+    }
+  }
+  output<-c(output,cat("\n\n"))
+  return(output)
+}
+
+no_null<-norm.plot(analysis_type)
+
+```
+
+### {-}
+
+
+
+### Sample clustering
+- Clustering of the samples (based on genes expression) shows if all the samples cluster together by their condition.
+  - This is depicted in PCA plot (left).
+  - This is summarized in heatmap (right).
+
+
+```{r de-pca, echo=FALSE, out.width="80%", results="asis", dev="svg"}
+pca_heatmap.plot<-function(analysis_type = analysis_type, comparison = comparison){
+  output<-cat("- Samples from different condition clustering together might indicate a reduce effect coming from the tested treatment which often leads to low differentially expressed gene identification.","\n\n")
+  if (dir.exists(paste0("../",analysis_type$DE[1],"/all_condition_results"))) {
+    output<-c(output,cat("#### Result over all condition {.tabset} \n"))
+    for(j in 1:length(analysis_type$name)){
+      output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
+      allpca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "all_condition_results",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
+      allheatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "all_condition_results",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
+      all_pca <- allpca.dt[analysis.type == analysis_type$analysis[j],]$path
+      all_heatmap <- allheatmap.dt[analysis.type == analysis_type$analysis[j],]$path
+      output<-c(output,cat("<div align='center'><figure style='width:50%;float:left'><img src=",all_pca," />","\n"))
+      output<-c(output,cat("<figcaption>PCA (first two components) visualization of all samples (DESeq2 VST normalization).</figcaption></figure>","\n"))
+      output<-c(output,cat("<figure style='width:50%;float:right'><img src=",all_heatmap," />","\n"))
+      output<-c(output,cat("<figcaption>Heatmap of samples clustered by gene expression (DESeq2 log2 normalization).</figcaption></figure>","\n"))
+      output<-c(output,cat("</div>","\n\n"))
+    }
+  output <- c(output,cat("#### {-} \n\n"))
+  }
+  output <- c(output,cat("#### Results for each condition {.tabset} \n"))
+  for(i in 1:length(comparison)){
+    output<-cat("##### ",comparison[i]," {.tabset}","\n")
+    pca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison, path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
+    heatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
+    for(j in 1:length(analysis_type$name)){
+      output<-c(output,cat("###### ",analysis_type$name[j]," \n"))
+      single_pca <- pca.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
+      single_heatmap <- heatmap.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
+      output<-c(output,cat("<div align='center'><figure style='width:50%;float:left'><img src=",single_pca," />","\n"))
+      output<-c(output,cat("<figcaption>PCA (first two components) visualization of all samples (DESeq2 VST normalization).</figcaption></figure>","\n"))
+      output<-c(output,cat("<figure style='width:50%;float:right'><img src=",single_heatmap," />","\n"))
+      output<-c(output,cat("<figcaption>Heatmap of samples clustered by gene expression (DESeq2 log2 normalization).</figcaption></figure>","\n"))
+      output<-c(output,cat("</div>","\n\n"))
+    }
+  }
+  return(output)
+}
+
+no_null<-pca_heatmap.plot(analysis_type, comparison)
+
+```
+
+#### {-}
+
+## Differential expression results
+
+- Please note that for visualization purposes we had to set a predefined cut-off value for some of the parameters (adj.p-value and logFC)
+
+- In this section, we might provide several results as the number of compared conditions is variable between experiments
+- Differential gene expression was calculated by two separate tools - edgeR and DESeq2
+  - Both of the tools have different performances: edgeR is usually more sensitive and less specific, DESeq2 is usually more specific and less sensitive; edgeR is more suitable for fewer replicates (<12) as it is not as conservative as DESeq2
+  - Generally, DESeq2 is more conservative than edgeR.
+  - If your goal is an exploratory analysis with a low number of replicates and with low expressed genes, edgeR might be your choice.
+  - If you need a selection of genes which are strongly differentially expressed and you want to remove as many false-positive results as possible for a price of some false-negative results, DESeq2 might be your choice.
+  - If you want to perform some sort of prioritization, you might select an overlap between the two tools.
+  - **Note for DESeq2**: By default, DESeq2 applies independent filtering which aims at removing genes which are potential outliers or show “strange” behavior (~large variance). Filtered genes are then marked by NA in either p-value or adj.p-value column. This filtering might be in some cases too strict and might cause a loss of interesting results. For this reason, we also make DESeq2 results without the independent filtering (DESeq2_noIndFilt). If you choose DESeq2 results, I recommend to start with filtered results but look at the end of the table at the filtered genes (genes with NA in p-value/adj.-value are at the bottom of the table). In case you see some interesting results there you might consider switching to the unfiltered results. In edgeR analysis, only genes with very low expression are excluded (1 read-per-million reads in at least 3 samples).
+- The full description of a DE results is given after in the Output files section
+
+- Number of DE genes with default cut-off values is summarized in the following [Table](#summary-table).
+  - Please note this is only a tentative view on approximate differences between the conditions and not final results.
+- [Volcano plot](#volcano-ma-link) visualization visualizes log2FC (x-axis) and adj.p-value (y-axis).
+  - Colored dots highlight genes above the defined adj.p-value cut-off value, blue lines show defined log2FC cut-off value.
+  - The Volcano plot presented here are from DESeq2 results.
+- [MA plot](#volcano-ma-link) visualizes mean expression (x-axis) and log2FC (y-axis).
+  - Colored dots highlight genes above the defined cut-off values (both adj.p-value and log2FC).
+  - The MA plot presented here are from DESeq2 results.
+- An example of maximum top 20 most DE genes (by adj.p-value) can be found in the [heatmap](#heatmap-link) below.
+  - The selection of a maximum 20 genes is always based on compared conditions but visualizes expression values from all other conditions if applicable.
+
+
+### <a name="summary-table"> </a> Summary table {.tabset}
+
+```{r tab.id="tabl-de-de", echo=FALSE, results="asis", ft.split=F}
+summary.table<-function(comparison=comparison, analysis_type = analysis_type){
+  output<-cat("\n")
+  for(i in 1:length(comparison)){
+
+    tabl.de.de.all <- data.table()
+
+    for(j in 1:length(analysis_type$DE)){
+      de.tab.edger <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/edgeR/edgeR.tsv"),
+                          sep  = "\t",header = T)
+      de.tab.deseq <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/detail_results/full_DESeq2.tsv"),
+                          sep  = "\t",header = T)
+      #de.tab.deseq.noIndFilt <- fread(paste0("../results/",DE[j],"/",comparison[i],"/all/DESeq2_noIndFilt.tsv"),
+      #                    sep  = "\t",header = T)
+
+      de.tab.edger.upl <- dim(de.tab.edger[padj < 0.05 & log2FoldChange >= 1,])[1]
+      de.tab.edger.dnl <- dim(de.tab.edger[padj < 0.05 & log2FoldChange <= -1,])[1]
+      de.tab.edger.up <- dim(de.tab.edger[padj < 0.05 & log2FoldChange > 0,])[1]
+      de.tab.edger.dn <- dim(de.tab.edger[padj < 0.05 & log2FoldChange < 0,])[1]
+
+      de.tab.deseq.upl <- dim(de.tab.deseq[padj < 0.05 & log2FoldChange >= 1,])[1]
+      de.tab.deseq.dnl <- dim(de.tab.deseq[padj < 0.05 & log2FoldChange <= -1,])[1]
+      de.tab.deseq.up <- dim(de.tab.deseq[padj < 0.05 & log2FoldChange > 0,])[1]
+      de.tab.deseq.dn <- dim(de.tab.deseq[padj < 0.05 & log2FoldChange < 0,])[1]
+
+      de.tab.deseq.noIndFilt.upl <- dim(de.tab.deseq[no_filter_padj < 0.05 & no_filter_log2FoldChange >= 1,])[1]
+      de.tab.deseq.noIndFilt.dnl <- dim(de.tab.deseq[no_filter_padj < 0.05 & no_filter_log2FoldChange <= -1,])[1]
+      de.tab.deseq.noIndFilt.up <- dim(de.tab.deseq[no_filter_padj < 0.05 & no_filter_log2FoldChange > 0,])[1]
+      de.tab.deseq.noIndFilt.dn <- dim(de.tab.deseq[no_filter_padj < 0.05 & no_filter_log2FoldChange < 0,])[1]
+
+      tabl.de.de <- data.table(Analysis=c("DESeq2","DESeq2 noIndFilt","edgeR"),
+                up_pval_logfc=c(de.tab.deseq.upl,de.tab.deseq.noIndFilt.upl,de.tab.edger.upl),
+                down_pval_logfc=c(de.tab.deseq.dnl,de.tab.deseq.noIndFilt.dnl,de.tab.edger.dnl),
+                up_pval=c(de.tab.deseq.up,de.tab.deseq.noIndFilt.up,de.tab.edger.up),
+                down_pval=c(de.tab.deseq.dn,de.tab.deseq.noIndFilt.dn,de.tab.edger.dn))
+      tabl.de.de <- tabl.de.de[,.(Tool = analysis_type$name[j], Comparison = comparison[i], Analysis, up_pval_logfc, down_pval_logfc, up_pval, down_pval)]
+
+      tabl.de.de.all <- rbind(tabl.de.de.all,tabl.de.de)
+    }
+
+    #knitr::kable(x = tabl.de.de, booktabs = TRUE, caption = capt, format.args = list(big.mark = ","))
+    edgeR.tag.pos <- which(tabl.de.de.all == "edgeR", arr.ind = TRUE) # find row and column with "edgeR"
+    # change the table to a flextable object
+    ftabl.de.de.all <- flextable(tabl.de.de.all[,.(Tool, Comparison, Analysis,
+                                                   "Up (adj.pval & logfc)"=up_pval_logfc,
+                                                   "Down (adj.pval & logfc)"=down_pval_logfc,
+                                                   "Up (adj.pval)"=up_pval,
+                                                   "Down (adj.pval)"=down_pval)])
+
+    # apply conditional formating - for each row with "edgeR" add a horizontal line
+    for(k in 1:nrow(edgeR.tag.pos)) {
+      ftabl.de.de.all <- ftabl.de.de.all %>%
+      hline(i = edgeR.tag.pos[k, 1], border = fp_border(color = "black", style = "solid", width = 1))
+    }
+    final.table<-fit_to_width(autofit(ftabl.de.de.all), max_width = 9.1)
+    output<-c(output,cat("#### ",comparison[i],"\n"))
+    output<-c(output,cat(flextable_to_rmd(final.table))) # transform the table object in rmd text which is properly recognized when knitted
+    output<-c(output,cat("\n\n"))
+  }
+  output<-c(output,cat("\n\n"))
+  return(output)
+}
+
+no_null<-summary.table(comparison, analysis_type)
+
+```
+
+### {-}
+
+Summary or number of DE genes based on default cut-off values from all three DE calculations. The first two columns are counts with both adj.p-value and logFC cut-off, the other two columns are only with adj.p-value cut-off. DESeq2 results, DESeq2 results without independent filtering (noIndFilt) and edgeR results are shown.
+
+### Volcano & MA plots {.tabset}
+
+<a name="volcano-ma-link"> </a>
+
+```{r de-volcano-ma, echo=FALSE, out.width="80%", results="asis", dev="svg"}
+
+volcano.ma.plots<-function(analysis_type = analysis_type, comparison=comparison){
+  for(i in 1:length(comparison)){
+    output<-cat("#### ",comparison[i]," {.tabset}","\n")
+    volcano.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
+                          path.prefix = "../", path.suffix = "/report_data/",
+                          pattern1 = "volcanoplot.+png", pattern2 = "volcanoplot.+png")
+    ma.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
+                          path.prefix = "../", path.suffix = "/report_data/",
+                          pattern1 = "MAplot.+png", pattern2 = "MAplot.+png")
+    for(j in 1:length(analysis_type$name)){
+      output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
+      single_volcano <- volcano.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
+      single_ma <- ma.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
+      output<-c(output,cat("<div align='center'><figure style='width:80%'><img src=",single_volcano," />","\n"))
+      output<-c(output,cat("<figcaption>Volcano plot (DESeq2 results with independent filtering on). Maximum of 20 most DE genes (by adj.p-value) are named.</figcaption></figure>","\n"))
+      output<-c(output,cat("<figure style='width:80%'><img src=",single_ma," />","\n"))
+      output<-c(output,cat("<figcaption>MA plot (DESeq2 results with independent filtering on). Maximum of 20 most DE genes (by adj.p-value) are named.</figcaption></figure>","\n"))
+      output<-c(output,cat("</div>","\n\n"))
+      }
+    }
+    return(output)
+  }
+
+no_null<-volcano.ma.plots(analysis_type, comparison)
+
+```
+
+### {-}
+
+### TOP DE genes {.tabset}
+
+<a name="heatmap-link"> </a>
+
+```{r de-top-de, echo=FALSE, results="asis", dev="svg"}
+
+top.de.plots<-function(analysis_type = analysis_type, comparison=comparison){
+  for(i in 1:length(comparison)){
+    output<-cat("#### ",comparison[i]," {.tabset}","\n")
+    topDE.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
+                          path.prefix = "../", path.suffix = "/report_data/",
+                          pattern1 = "heatmap_selected_orderBaseMeanCluster.png", pattern2 = "heatmap_selected_orderBaseMeanCluster.png")
+    for(j in 1:length(analysis_type$name)){
+      output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
+      single_topDE <- topDE.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
+      if(is.na(single_topDE)){
+        output<-c(output,cat("<div align='center'>No DE gene were found from DESeq2 results with independent filtering, adj.p-value < 0.05, logFC >= +/-1.</div>","\n\n"))
+      }else{
+        output<-c(output,cat("<div align='center'><figure style='width:80%'><img src=",single_topDE," />","\n"))
+        output<-c(output,cat("<figcaption>Heatmap of maximum top 20 differentially expressed genes (DESeq2 results with independent filtering, adj.p-value < 0.05, logFC >= +/-1).</figcaption></figure>","\n"))
+        output<-c(output,cat("</div>","\n\n"))
+      }
+    }
+  }
+  return(output)
+}
+
+no_null<-top.de.plots(analysis_type, comparison)
+
+```
+
+### {-}
+
+## Used statistics and selection of differentially expressed genes
+
+### Log2FC and adjusted p-value
+- Differences between the conditions are expressed in **log2FC** (log2 of fold-change)
+    - This is calculated by comparing average expression one condition vs the other and then the log2 transformation
+    - This makes the results symmetric around 0 and it’s easier to understand
+    - For example: -1 is a 2-fold decrease of the expression, +1 is a 2-fold increase of the expression.
+    - Please note it always depends on the “direction” of the comparison - if you are not sure just compare normalized counts of one gene to see from which “direction” the log2FC was calculated.
+- Calculation of DE genes consists of a very high number of comparisons (thousands of genes = thousands of comparisons)
+  - For this reason, we need to correct raw p-values for false discovery rate which emerges from the number of comparisons
+  - This results in **adjusted p-values** (adj.pval, adj. p-values, adj. pval)
+    - In case you want to use some filtering or selection based on the statistical evidence you should ALWAYS USE adjusted p-values and never raw p-values
+    - Raw p-values can be used only in very special cases and always require a discussion with bioinformatician or statistician
+
+## Note on selecting of differentially expressed genes (DEG)
+- Selection of differentially expressed genes always has to be primarily based on the biological background of the experiment and the hypothesis
+- A lot of people select DEG based on a combination of cut-off values
+- This might be tricky as no predefined cut-off values exist and it depends on the experiment itself, on the amount of false-positive results you are willing to accept and on the minimum level of changes if any
+- Commonly used statistical values, such as logFC and adj.p-value, should help you to confirm the hypothesis, results or the observations and not lead the discovery itself
+- If you decide to go for some cut-off values, do not blindly select only genes above the thresholds!
+  - For example, the frequently used cut-off value of adj.p-value 0.05 at which you will reject the hypothesis the gene is not expressed the same: one gene will have adj.p-value 0.0499 which would pass this cut-off whereas the second gene will have adj.p-value of 0.0501 and would not pass the cut-off.  The difference between the genes is negligible and still, the first gene would and the other gene would not be accepted if a strict cut-off value would be set.
+  - Another “issue” with adj.p-value is when the groups we are comparing are heterogeneous (for example clinical samples). In this case, adj.p-value are generally much higher.  In this situation, we should strongly focus on biological effect and hypothesis and use statistics to either confirm the observation or to function for prioritization of the results
+  - The similar thing applies to logFC
+  - In the case of logFC, we also have to consider the effect of the expression of individual genes. For example, the frequently used cut-off value of 1 (2x fold-change): A gene with expression 10 in one group and 5 in other group results in logFC 1 and would pass the cut-off. The overall expression of the gene is negligible and most likely the change doesn’t have any biological effect. Another gene has an expression of 10000 in one group and 5001 in another group. This gene would not pass the cut-off value but most likely the change will have some kind of biological effect.
+  - Sometimes small logFC might be more important than high logFC and the same applies to adj.p-value.
+- We should always choose the genes based on the overall properties of the gene and the comparison between conditions
+
+## Output files
+- Results are organized by compared conditions
+  - The compared conditions are always stated in the name of the folder
+  - All the results in the corresponding folder are based on the currently compared conditions but in some of the cases other samples and conditions are added to the visualization/summaries as well
+  - For example: **cond1_vs_cond2** compares cond1 to cond2. In the DE results then - positive log2FC signalizes more expression in cond1 (or less in cond2) and negative log2FC signalizes less expression in cond1 (or more in cond2).
+- Main output files are **DESeq2.tsv**, **DESeq2_noIndFilt.tsv**, and **edgeR.tsv**
+- All three main results contain several columns:
+  - **first column (no name)** - Ensembl gene id
+  - **baseMean** - an average expression of genes from samples from compared conditions
+  - **log2FoldChange** - log2FC of the gene expression difference. The difference is calculated by comparing average expression of samples of one condition with the other samples from the other condition
+  - **stat and lfcSE** (in DESeq2); LR and tgw.Disp (in edgeR) - results of the statistical test performed by the tool and variation/dispersion of the gene
+  - **pvalue** - a raw p-value of the comparison
+  - **padj** - multiple testing correction (Benjamini-Hochberg correction) p-value of the comparison. In case you are comparing and analyzing RNA-Seq use this as the evaluation of the statistical significance of the comparison
+  - **gene_name** - common gene name
+  - **gene_biotype** - biotype of the gene
+  - **_normCounts** - normalized gene expression for each sample (not only the samples in the current comparison)
+  - **_rawCounts** - raw read counts for each sample (not only the samples in the current comparison)
+- The full description is given below
+
+- Additional visualizations and/or a different combination of visualization is available upon request after discussion
+
+## General/common outputs
+- **xxx** in the name of some pdf files in the description below represents compared conditions
+- **background.txt** – list of genes that were expressed in your samples (=gene was expressed in at least one of the samples). The first column is Ensembl gene ID, second is common gene name.
+- **norm_counts.xlsx** - DESeq2 normalized counts (~expression) for all genes and all samples. Can be used for visualization of the data.
+  - **norm_counts.tsv** - the same information as in norm_counts.xlsx but in a text form.
+- **all_sig_genes_normCounts.pdf** – significantly DEG (here, “default cut-off” adj.p-value 0.05 and logFC 1 is considered) expression visualization. Selection of DE genes is based on the particular comparison but all conditions/samples are plotted. This is based on DESeq2 results.
+- **counts_barplot.pdf** - visualization of used (raw) read counts per sample
+- **DESeq2.tsv** – main results from differential gene expression by DESeq2. Description of the columns is given above. tsv is a tab-separated source file for the xlsx.
+- **DESeq2_noIndFilt.tsv** – results from differential gene expression without independent gene filtering (see Independent filtering and Cooks cut-off in DESeq2 manual). tsv is a tab-separated source file for the xlsx.
+- **DESeq2_de_genes_check.txt** and **DESeq2_de_genes_check_noIndFilt.txt** – basic summary of differential expression. “Default” adj.p-value of 0.05 and logFC of 1 are used. The upper part of the table considers only adj.p-value cut-off value, the lower part considers adj.p-value and logFC. This servers only for a  demonstration of the possible effect, not as a final result
+- **DESeq2_design_control.txt** - a control file for used sample design
+- **edgeR.tsv** – main results from differential gene expression by edgeR. tsv is a tab-separated source file for the xlsx.
+- **edgeR_de_genes_check.txt** - same as in case of DESeq2 - “quick and dirty” check of the effect to get a general idea about the differences.
+- **heatmap_selected_orderBaseMean.pdf** – heatmap of maximum top 20 most differentially expressed genes (based on adj. p-value) ordered by an average expression. Blue means low expression, red means high expression. The maximum top 20 genes are selected based on the compared groups but all samples are visualized. This is based on DESeq2 results.
+- **heatmap_selected_orderBaseMeanCluster.pdf** – heatmap of maximum top 20 most differentially expressed genes (based on adj. P-value, same as above) clustered by rows and columns. Blue means low expression, red means high expression. This is based on DESeq2 results.
+- **heatmaps_samples.pdf** - heatmap visualization of sample clustering based on gene expression. Several normalizations are applied but the first one usually looks the best.
+- **MAplot_xxx_vs_xxx_ggpubr.pdf** - MA plots for the gene expression. Maximum top 20 most DEG (by adj.p-value) are named. This is based on DESeq2 results.
+- **MAplot_xxx_vs_xxx_noIndFilt_ggpubr.pdf** -  the same as above but without independent filtering.
+- **MDS_plot.pdf** - MDS-based visualization of sample clustering by expression
+- **overlap_DESeq2_edgeR_de.tsv** and **overlap_DESeq2_edgeR_venn.pdf** – overlap between DE genes between DESeq2 and edgeR calculation. In default, genes with adj. p-value <0.05 and logFC +/- 1 are included. Columns DESeq2 and edgeR contain values TRUE or FALSE and this represents whether the resulting gene was included in the results by an individual tool.
+- **pre_post_norm_counts.pdf** - visualization of used raw (top figure) and normalized (bottom) read counts per sample
+- **sample_to_sample_PCA.pdf** - PCA-based visualization of sample clustering by expression. The first figure shows first two PCA components, the second shows all combinations of first three components (~3D look)
+- **volcanoplot_xxx_vs_xxx_ggplot2.pdf** – volcano plot of the results from DESeq2. Maximum top 20 most DEG (based on adj.p-value) are depicted. This is based on DESeq2.
+- **volcanoplot_xxx_vs_xxx_noIndFilt_ggplot2.pdf** - same as above but without independent filtering.
+
+- Please note the differences between MA and Volcano plots - different X and Y axes giving you a different view on the results.
+
+- Alignments can be visualized in genome browsers such as [IGV](http://software.broadinstitute.org/software/igv/), [Tablet](https://ics.hutton.ac.uk/tablet/) or [Savant](http://www.genomesavant.com/p/savant/index)
+  - For more details please read the manual or contact your bioinformatician
+- If the mapping files were shared through the online storage please download them as soon as possible and let us know so we can delete them
+
+# Output files (alphabetical order)
+## Folders
+### Raw_fastq
+- Provided raw sequenced fastq files
+
+### Alignment
+- Provided alignments in bam format
+
+### QC_general
+- html file summarizing most of the QC done
+
+### FeatureCounts_expression
+- Gene expression raw counts for each sample
+
+### RSEM_expression
+- Gene and transcript expression for each sample
+- The normalized expressions are summarized in TPM column
+
+#### Files
+- .genes.results.tsv - gene expression estimates
+- .isoforms.results.tsv - transcript expression estimates
+
+### UCSC_signals
+- Alignment signal for UCSC browser
+- Two signal “types” per sample are provided:
+  - Unique - signal only from uniquely mapped reads
+  - UniqueMultiple - signal from both uniquely and multi-mapped reads
+- Each set is then split into two:
+  - str1 - signal coming from the alignment to the plus strand of DNA
+  - str2 - signal coming from the alignment to the minus strand of DNA
+- If you have sense/forward specific library, the signal strand corresponds to the strand of the annotated gene (mapping ----> corresponds to the [+] strand annotation)
+- If you have antisense/reverse specific library, the signal strand corresponds to the opposite strand gene annotation (mapping <---- corresponds to the [+] strand annotation)
+
+### DE_analysis
+- All files related to Differentially expressed genes analysis
+
+## Gene ontology, GSEA and pathway analysis
+- This section summarizes possible follow-up analyses/interpretations of the differential expression results
+- In the following analyses the input can sometimes be specified as Ensembl ID (usually provided in the results unless noted otherwise), some tools required common gene names (usually provided in the results as well) or Entrez ID (NCBI/RefSeq)
+  - This is always specified in the manual of the tool
+- GO and/or Pathway analysis can be performed for up-/down-regulated genes as well as for the whole list of de-regulated genes
+  - Both of the analyses give a different view of the results
+    - Analysis of separate up-/down-regulated genes gives you a direct answer on the change, in particular, GO or Pathway and the “direction” of the regulation
+    - Analysis of all de-regulated genes (up-/down-regulated together) gives you a more broad view of the total change
+  - Both of the results are helpful but you have to realize what kind of information you can get and what kind of answer they provide
+
+### Gene Ontology
+- Input for gene ontology (GO) testing is usually a list of differentially expressed genes
+  - You can either use filtering by some cut-off value(s) or select top X genes sorted by adj.p-value/logFC/...
+- You can either analyze all DEG or separately down-/up-regulated
+  - Please see the section above for more details
+- A second input is gene background/universe
+  - This is a list of all genes expressed in the comparison
+  - This list is used as a “reference” for the statistical evaluation of significantly changed GO groups
+- For “common” organisms like human or mouse, a very nice tool is [GOrilla](http://cbl-gorilla.cs.technion.ac.il/) with very nice figures and direct export to Excel
+  - It also contains links to [REViGO](http://revigo.irb.hr/) which can help you to summarize the GO groups into more general categories
+- To simply browse GO categories you can use [QuickGO](http://www.ebi.ac.uk/QuickGO/) or [Ontology Lookup Service](http://www.ebi.ac.uk/ols/index)
+- Another option to filter down GO categories is [AmiGO2](http://amigo.geneontology.org/amigo/dd_browse).
+- If, for whatever reason, you don't have gene ontology annotations but just sequences of your genes you can still get GO analysis. [Blast2GO](https://www.blast2go.com/) is a nice service combining BLAST similarity search with GO annotation to produce GO analysis. There is a free and paid version where the free version gives you basic annotations and have some pretty visualizations. A tutorial is for example here 	https://www.youtube.com/watch?v=GqSqS_izlYg&t=335s.
+- Other tools include [g:Profiler](https://biit.cs.ut.ee/gprofiler/) and many more
+
+### Pathway analysis
+- Input data are very similar to GO (mentioned above)
+- [PANTHER](http://www.pantherdb.org ) and [Reactome](http://www.reactome.org/) provide quite nice analysis for the Pathway analysis and exploration.
+  - PANTHER recently started to include GO testing as well so it became a multi-purpose tool
+- [KEGG](http://www.genome.jp/kegg/kegg2.html) is another commonly used tools for pathway analysis but it is not that easy to interpret the data unless you know which pathways should be involved
+
+### Gene Set  Enrichment
+- Input data to Gene Set Enrichment are a bit different than in previous cases
+- You do NOT subsample your results but you take a whole list of gene expression results and sort it according to specified criteria (logFC, adj.p-value, ...)
+  - In the case of logFC, you have the most positively changed genes on the top and the most negatively changed genes at the bottom and non-changed genes are in the middle but they are still in the SAME list
+  - The enrichment then compares different parts of the list and looks for patterns or similarities
+- One of the most used is probably [GSEA](http://software.broadinstitute.org/gsea/index.jsp)
+  - It’s a standalone tool which takes some time to learn but provides reasonable results
+- [GOrilla](http://cbl-gorilla.cs.technion.ac.il/) also offers gene enrichment analysis
+- Another option is to use [DAVID](https://david.ncifcrf.gov/home.jsp) which is also a multipurpose tool but I do not recommend it too much since the interpretation of the results might be difficult and very subjective. But it can still be used if there is no other option or you find it easy to work with.
+
+### Protein-protein interactions
+- [HIPPIE](http://cbdm-01.zdv.uni-mainz.de/~mschaefer/hippie/index.php) provides reliable and meaningful human protein-protein interaction networks. It is suitable more for gene-by-gene exploration.
+- [STRING](https://string-db.org/cgi/input.pl?UserId=4hzU6jHtBui6&sessionId=fokvQzUPEo8M&input_page_show_search=off) is a database of known and predicted protein-protein interactions supported by SIB, CPR - NNF and EMBL. This includes physical, functional as well as predicted interactions.
+- [BioGRID](https://thebiogrid.org/) is an interaction repository with data compiled through comprehensive curation efforts. Contains interactions extracted from publications for major model organisms
+
+### Multipurpose tools and other
+- There are other tools/approaches to help with the secondary analysis
+- [Enrichr](http://amp.pharm.mssm.edu/Enrichr/) is nice and simple to run the tool to identify enriched pathways, different gene summaries, and many others. It provides many various plots and tables
+- [GeneMANIA](http://genemania.org/) visualizes genes and their interaction, co-expression as well as Gene Ontology, etc. It is suitable more for gene-by-gene exploration.
+- [ConsensusPathDB-human](http://cpdb.molgen.mpg.de/) integrates several different approaches including pathway analysis
+- [BioCyc Database Collection](https://biocyc.org/) is a collection of 9387 Pathway/Genome Databases (PGDBs), plus software tools for understanding their data.
+- [KEGG database](http://www.genome.jp/kegg/kegg2.html) is a database resource that integrates genomic, chemical and systemic functional information. In particular, gene catalogs from completely sequenced genomes are linked to higher-level systemic functions of the cell, the organism, and the ecosystem. KEGG accepts common gene names and NCBI gene/transcript ID and UniProt ID. For the analysis, you can use http://www.genome.jp/kegg/tool/map_pathway2.html or http://www.genome.jp/kegg/tool/map_pathway1.html. KEGG looks for genes in your list and tries to highlight the pathway where selected genes have some kind of association.
+- [Venny](http://bioinfogp.cnb.csic.es/tools/venny/) is a nice tool for a simple visualization of overlaps between up to three sets of data.
+
+### R/Bioconductor
+- If you know how to use **R** you can check [**clusterProfiler**](https://bioconductor.org/packages/release/bioc/html/clusterProfiler.html) which provides many different analyses types and has very nice manual and tutorials
+- [**topGO**](http://bioconductor.org/packages/release/bioc/html/topGO.html) is another R package which offers both gene ontology and gene set enrichment analysis
+- [**ReactomePA**](https://bioconductor.org/packages/release/bioc/html/ReactomePA.html) allows for analysis of pathways with a slightly different source than KEGG
+- To add GO categories (and other interesting information) to your list of genes, you can try [**biomaRt**](https://bioconductor.org/packages/release/bioc/html/biomaRt.html) which can directly load the Ensembl database
+
