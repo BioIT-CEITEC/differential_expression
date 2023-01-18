@@ -26,3 +26,31 @@ else:
 f = open(log_filename, 'a+')
 f.write("## COMMAND: "+command+"\n")
 shell(command)
+
+
+command = " cp '"+os.path.abspath(os.path.dirname(__file__))+"/customer_report.Rmd' DE_report/"
+
+shell(command)
+
+command = """ Rscript -e "rmarkdown::render('DE_report/customer_report.Rmd', params=list(config = '""" + snakemake.params.config + """'))" """ +\
+            " >> " + log_filename + " 2>&1 "
+
+f = open(log_filename, 'a+')
+f.write("## COMMAND: "+command+"\n")
+shell(command)
+
+command = " ls " + snakemake.output.html
+
+f = open(log_filename, 'a+')
+f.write("## COMMAND: "+command+"\n")
+shell(command)
+
+command = " rm DE_report/customer_report.Rmd"
+
+shell(command)
+
+command = " mv DE_report/DE_report.html " + snakemake.output.html
+
+f = open(log_filename, 'a+')
+f.write("## COMMAND: "+command+"\n")
+shell(command)

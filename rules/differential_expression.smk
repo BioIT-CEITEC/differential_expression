@@ -76,5 +76,6 @@ rule DE_computation:
 rule DE_report:
     input: tsv = expand("DE_{analysis_type}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list,analysis_type=selected_analysis_types)
     output: html = "final_report.html"
+    params: config = "DE_report.json"
     log:    "logs/DE/DE_report.log"
     script: "../wrappers/DE_report/script.py"
