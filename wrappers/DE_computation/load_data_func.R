@@ -18,6 +18,7 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
   condition_to_compare_vec <- rev(unique(unlist(strsplit(comparison_vec,split= "_vs_"))))
   experiment_design[,condition_order := match(experiment_design$condition,condition_to_compare_vec)]
   setorder(experiment_design,condition_order,patient,na.last = T)
+  experiment_design[,sample_name:=make.names(sample_name)]
   experiment_design[,condition_order := NULL]
   experiment_design[,condition := factor(condition,levels = unique(condition))]
   experiment_design[,patient := factor(patient,levels = unique(patient))]
