@@ -84,6 +84,8 @@ wildcard_constraints:
      analysis_type= "feature_count|RSEM|salmon_map|salmon_align|kallisto",
      #data_type= "tsv|RData"
 
+os.makedirs("DE_report",exist_ok=True)
+
 f=open("DE_report/DE_report.json", "w")
 json.dump(config, f, indent=4)
 f.close()
