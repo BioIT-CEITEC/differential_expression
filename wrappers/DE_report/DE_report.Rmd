@@ -15,7 +15,7 @@ params:
 ---
 
 ---
-title: DE results
+title: DE result report
 author:
   - CEITEC Bioinformatics Core Facility
 ---

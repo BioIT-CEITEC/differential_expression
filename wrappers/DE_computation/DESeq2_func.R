@@ -1,12 +1,20 @@
 
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
-count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec){
-  res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var, sep="::")
-  names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
-  #names(res) <- names(res)
-  mat <- as.matrix(res[,-1,with = F],rownames.force = T)
-  rownames(mat) <- res$Ensembl_Id
+count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec, name4row = "Ensembl_Id"){
+  if(name4row == "Ensembl_Id"){
+    res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var, sep="::")
+    names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
+    #names(res) <- names(res)
+    mat <- as.matrix(res[,-1,with = F],rownames.force = T)
+    rownames(mat) <- res$Ensembl_Id
+  }else{
+    res <- dcast.data.table(count_dt,Feature_name ~ condition + sample_name,value.var = value_var, sep="::")
+    names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
+    #names(res) <- names(res)
+    mat <- as.matrix(res[,-1,with = F],rownames.force = T)
+    rownames(mat) <- res$Feature_name
+  }
   return(mat)
 }
 
@@ -615,11 +623,11 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
 
     if(paired_samples==T){
       print("Using paired design")
-      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec)
+      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts_batch",condition_to_compare_vec = condition_to_compare_vec,name4row = "Feature_name")
       df<-unique(count_dt[condition %in% condsToCompare,.(sample_name,condition,patient)])
     }else{
       print("Using simple design")
-      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts",condition_to_compare_vec = condition_to_compare_vec)
+      log2.norm.counts <- count_matrix_from_dt(count_dt[condition %in% condsToCompare & Feature_name %in% comp_res[RANGE,]$Feature_name,],"log2counts",condition_to_compare_vec = condition_to_compare_vec,name4row = "Feature_name")
       df<-unique(count_dt[condition %in% condsToCompare,.(sample_name,condition)])
     }
     df <- as.data.frame(df)

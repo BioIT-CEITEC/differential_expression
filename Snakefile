@@ -59,7 +59,24 @@ else:
     if not config['keep_not_compared_samples_for_normalization']:
         sample_tab = sample_tab[sample_tab['condition'].isin(condition_list)]
 
+#
+analysis = []
+if config["feature_count"]:
+    analysis.append("feature_count")
+if config["RSEM"]:
+    analysis.append("RSEM")
+if config["salmon_align"]:
+    analysis.append("salmon_align")
+if config["salmon_map"]:
+    analysis.append("salmon_map")
+if config["kallisto"]:
+    analysis.append("kallisto")
 
+biotype_dir_list = config['biotypes'].split(",")
+
+config["analysis_type"] = "|".join(analysis)
+config["biotype_list"] = "|".join(biotype_dir_list)
+config["comparison"] = "|".join(comparison_dir_list)
 
 #set analysis selected analysis types from config and rise exception if no selected
 selected_analysis_types = []

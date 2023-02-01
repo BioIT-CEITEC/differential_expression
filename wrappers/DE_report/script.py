@@ -28,11 +28,11 @@ f.write("## COMMAND: "+command+"\n")
 shell(command)
 
 
-command = " cp '"+os.path.abspath(os.path.dirname(__file__))+"/customer_report.Rmd' DE_report/"
+command = " cp '"+os.path.abspath(os.path.dirname(__file__))+"/DE_report.Rmd' DE_report/"
 
 shell(command)
 
-command = """ Rscript -e "rmarkdown::render('DE_report/customer_report.Rmd', params=list(config = '""" + snakemake.params.config + """'))" """ +\
+command = """ Rscript -e "rmarkdown::render('DE_report/DE_report.Rmd', params=list(config = '""" + snakemake.params.config + """'))" """ +\
             " >> " + log_filename + " 2>&1 "
 
 f = open(log_filename, 'a+')
@@ -45,7 +45,7 @@ f = open(log_filename, 'a+')
 f.write("## COMMAND: "+command+"\n")
 shell(command)
 
-command = " rm DE_report/customer_report.Rmd"
+command = " rm DE_report/DE_report.Rmd"
 
 shell(command)
 
