@@ -160,10 +160,11 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   }
   
   ### Plot expression profiles
+  expcolour <- rep(c(brewer.pal(8, "Dark2"),brewer.pal(8, "Set2"),brewer.pal(8, "Pastel2")),3)
   pdens <- ggplot(reshape2::melt(logCPM), aes(value, color=Var2)) +
     geom_density() +
     #theme_bw() +
-    scale_color_brewer(palette = "Set3") +
+    scale_color_manual(values = expcolour) +
     ggtitle("Expression profiles") +
     xlab("Log10 of normalized expression per gene (edgeR)") +
     ylab("Density") +

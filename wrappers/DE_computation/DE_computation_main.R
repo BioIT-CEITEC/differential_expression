@@ -67,15 +67,15 @@ run_all <- function(args){
   if(!normalize_data_per_comparison){
     #DESeq2 part
     ################
-    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
+    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = unique(experiment_design$condition))
     dds <- res_list[[1]]
     count_dt <- res_list[[2]]
     
-    create_normalization_specific_DESeq2_results(paste0(output_dir,"/all_condition_results"),dds,count_dt,condition_to_compare_vec = condition_to_compare_vec)
+    create_normalization_specific_DESeq2_results(paste0(output_dir,"/all_condition_results"),dds,count_dt,condition_to_compare_vec = unique(experiment_design$condition))
     
     #edgeR part
     ################
-    res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+    res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = unique(experiment_design$condition))
     edgeR_DGEList <- res_list[[1]]
     fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
     
