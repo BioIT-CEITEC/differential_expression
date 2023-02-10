@@ -26,12 +26,52 @@ read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,p
   return(list(experiment_design,comparison_vec,condition_to_compare_vec))
 }
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type){
+filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", keepChrm = TRUE){
+    dt<-TSV
+    dt_names<-copy(names(dt)) # c("Geneid","Chr","Feature_name","biotype")
+
+    if(geneList == "all" & !keepGene){
+      print("You are removing all genes from the table ! All genes will be kept !")
+      filtered <- copy(dt)
+    }else if(chrmList == "all" & !keepChrm){
+      print("You are removing all chromosomes from the table ! All genes will be kept !")
+      filtered <- copy(dt)
+    }else{
+      if(geneList != "all"){
+        dg <- data.table(Geneid=unlist(strsplit(geneList,split=",",fixed = T)), geneList=TRUE)
+        dt <- merge(dt, dg, by="Geneid", all=TRUE)
+        dt[is.na(geneList) , geneList := FALSE] # change geneList value from NA to FALSE
+      }else{
+        dt[, geneList:=TRUE]
+      }
+
+      if(chrmList != "all"){
+        dc <- data.table(chrm=unlist(strsplit(chrmList,split=",",fixed = T)), chrmList=TRUE)
+        dt <- merge(dt, dc, by="chrm", all=TRUE)
+        dt[is.na(chrmList) , chrmList := FALSE] # change geneList value from NA to FALSE
+      }else{
+        dt[, chrmList:=TRUE]
+      }
+
+      setcolorder(dt, dt_names)
+
+      filtered <- dt[geneList == keepGene & chrmList == keepChrm, ][, dt_names, with=FALSE]
+
+      if(keepGene){textGene <- "Gene to keep: "}else{textGene <- "Gene to remove: "}
+      if(keepChrm){textChrm <- "Chromosome to keep: "}else{textGene <- "Chromosome to remove: "}
+      print(paste0(textGene,geneList,"/n",textChrm,chrmList))
+    }
+
+    return(filtered)
+  }
+
+
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm){
   
   feat_type <- "gene"
-  annotate_by<- c("gene_id","gene_name", "gene_biotype")
+  annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")
   gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
-  setnames(gtf_gene_tab,c("Geneid","Gene_name","biotype"))
+  setnames(gtf_gene_tab,c("Geneid","Chr","Gene_name","biotype"))
   gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]       
   gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
   gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
@@ -39,7 +79,9 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   gtf_gene_tab[,duplicated := NULL]
   setnames(gtf_gene_tab,"Gene_name","Feature_name")
   setkey(gtf_gene_tab,"Geneid")
-  
+
+  gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
+
   if(analysis_type == "feature_count"){
     txi <- NULL
     

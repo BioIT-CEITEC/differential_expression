@@ -32,11 +32,26 @@ rule creat_RSEM_table:
 
 rule creat_feature_count_table:
     input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
-    output: table = "DE_feature_count/complete_feature_count_table.tsv",
+    output: table = "DE_feature_count/complete_feature_count_table.original.tsv",
     log:    "logs/DE/create_feature_count_table.log"
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
     script: "../wrappers/analysis_feature_count_table/script.py"
 
+def filter_tab_input(wildcards):
+    if wildcards.analysis_type == "feature_count":
+        suffix = "tsv"
+    else:
+        suffix = "RData"
+
+    return expand("DE_{analysis_type}/complete_{analysis_type}_table.original.{suffix}",analysis_type=wildcards.analysis_type,suffix=suffix)[0]
+
+rule filter_table:
+    input:  count_tab = filter_tab_input,
+    output: table = expand("DE_{{analysis_type}}/complete_{{analysis_type}}_table.{{suffix}}"),
+    params:
+    log:    "logs/DE/filter_{analysis_type}_table.log"
+    conda:  "../wrappers/filter_table/env.yaml"
+    script: "../wrappers/filter_table/script.py"
 def count_tab_input(wildcards):
     if wildcards.analysis_type == "feature_count":
         suffix = "tsv"
@@ -61,7 +76,11 @@ rule DE_computation:
             pvalue_for_viz= config["pvalue_for_viz"],
             fold_change_threshold= config["fold_change_threshold"],
             named_in_viz= config["named_in_viz"],
-            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"]
+            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
+            geneList= config["filter_geneList"],
+            keepGene=config["filter_keepGene"],
+            chrmList=config["filter_chrmList"],
+            keepChrm=config["filter_keepChrm"],
     log:    "logs/DE/DE_{analysis_type}.log"
     conda:  "../wrappers/DE_computation/env.yaml"
     script: "../wrappers/DE_computation/script.py"
