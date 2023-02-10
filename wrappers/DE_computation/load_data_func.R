@@ -38,6 +38,7 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
       filtered <- copy(dt)
     }else{
       if(geneList != "all"){
+        print("filtering genes")
         dg <- data.table(Geneid=unlist(strsplit(geneList,split=",",fixed = T)), geneList=TRUE)
         dt <- merge(dt, dg, by="Geneid", all=TRUE)
         dt[is.na(geneList) , geneList := FALSE] # change geneList value from NA to FALSE
@@ -46,8 +47,9 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
       }
 
       if(chrmList != "all"){
-        dc <- data.table(chrm=unlist(strsplit(chrmList,split=",",fixed = T)), chrmList=TRUE)
-        dt <- merge(dt, dc, by="chrm", all=TRUE)
+        print("filtering chromosomes")
+        dc <- data.table(Chr=unlist(strsplit(chrmList,split=",",fixed = T)), chrmList=TRUE)
+        dt <- merge(dt, dc, by="Chr", all=TRUE)
         dt[is.na(chrmList) , chrmList := FALSE] # change geneList value from NA to FALSE
       }else{
         dt[, chrmList:=TRUE]
