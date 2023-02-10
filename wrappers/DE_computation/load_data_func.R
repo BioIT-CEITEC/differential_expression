@@ -61,7 +61,12 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
 
       if(keepGene){textGene <- "Gene to keep: "}else{textGene <- "Gene to remove: "}
       if(keepChrm){textChrm <- "Chromosome to keep: "}else{textGene <- "Chromosome to remove: "}
-      print(paste0(textGene,geneList,"/n",textChrm,chrmList))
+
+      print(paste0(textGene,geneList))
+      print(paste0(textChrm,chrmList))
+
+      print(paste0("Total genes before filtering: ",length(dt$Geneid)))
+      print(paste0("Total genes after filtering: ",length(filtered$Geneid)))
     }
 
     return(filtered)
