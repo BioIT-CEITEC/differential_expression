@@ -60,7 +60,7 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
       filtered <- dt[geneList == keepGene & chrmList == keepChrm, ][, dt_names, with=FALSE]
 
       if(keepGene){textGene <- "Gene to keep: "}else{textGene <- "Gene to remove: "}
-      if(keepChrm){textChrm <- "Chromosome to keep: "}else{textGene <- "Chromosome to remove: "}
+      if(keepChrm){textChrm <- "Chromosome to keep: "}else{textChrm <- "Chromosome to remove: "}
 
       print(paste0(textGene,geneList))
       print(paste0(textChrm,chrmList))
