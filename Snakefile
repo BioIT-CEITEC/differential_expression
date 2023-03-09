@@ -61,8 +61,16 @@ else:
 
 #
 analysis = []
-if config["feature_count"]:
-    analysis.append("feature_count")
+if config["featureCount_exon"]:
+    analysis.append("featureCount_exon")
+if config["featureCount_gene"]:
+    analysis.append("featureCount_gene")
+if config["featureCount_transcript"]:
+    analysis.append("featureCount_transcript")
+if config["featureCount_3pUTR"]:
+    analysis.append("featureCount_3pUTR")
+if config["featureCount_5pUTR"]:
+    analysis.append("featureCount_5pUTR")
 if config["RSEM"]:
     analysis.append("RSEM")
 if config["salmon_align"]:
@@ -80,8 +88,16 @@ config["comparison"] = "|".join(comparison_dir_list)
 
 #set analysis selected analysis types from config and rise exception if no selected
 selected_analysis_types = []
-if config["feature_count"]:
-    selected_analysis_types.append("feature_count")
+if config["featureCount_exon"]:
+    selected_analysis_types.append("featureCount_exon")
+if config["featureCount_gene"]:
+    selected_analysis_types.append("featureCount_gene")
+if config["featureCount_transcript"]:
+    selected_analysis_types.append("featureCount_transcript")
+if config["featureCount_3pUTR"]:
+    selected_analysis_types.append("featureCount_3pUTR")
+if config["featureCount_5pUTR"]:
+    selected_analysis_types.append("featureCount_5pUTR")
 if config["RSEM"]:
     selected_analysis_types.append("RSEM")
 if config["salmon_map"]:
@@ -92,13 +108,13 @@ if config["kallisto"]:
     selected_analysis_types.append("kallisto")
 
 if len(selected_analysis_types) == 0:
-    raise ValueError("There was no RSEM or feature_count used in previous analysis!")
+    raise ValueError("There was no RSEM or featureCount used in previous analysis!")
 
 
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "feature_count|RSEM|salmon_map|salmon_align|kallisto",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto",
      #data_type= "tsv|RData"
 
 os.makedirs("DE_report",exist_ok=True)
@@ -111,8 +127,16 @@ f.close()
 
 def input_all(wildcards):
     input = {}
-    if config["feature_count"]:
-        input["feature_count"] = "DE_feature_count/final_report.html"
+    if config["featureCount_exon"]:
+        input["featureCount_exon"] = "DE_featureCount_exon/final_report.html"
+    if config["featureCount_gene"]:
+        input["featureCount_gene"] = "DE_featureCount_gene/final_report.html"
+    if config["featureCount_transcript"]:
+        input["featureCount_transcript"] = "DE_featureCount_transcript/final_report.html"
+    if config["featureCount_3pUTR"]:
+        input["featureCount_3pUTR"] = "DE_featureCount_3pUTR/final_report.html"
+    if config["featureCount_5pUTR"]:
+        input["featureCount_5pUTR"] = "DE_featureCount_5pUTR/final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "DE_RSEM/final_report.html"
     if config["salmon_map"]:

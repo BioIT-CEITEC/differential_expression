@@ -30,15 +30,43 @@ rule creat_RSEM_table:
     conda:  "../wrappers/analysis_RSEM_table/env.yaml"
     script: "../wrappers/analysis_RSEM_table/script.py"
 
-rule creat_feature_count_table:
-    input:  feature_count = expand("qc_reports/{sample}/feature_count/{sample}.feature_count.tsv",sample=sample_tab.sample_name)
-    output: table = "DE_feature_count/complete_feature_count_table.tsv",
-    log:    "logs/DE/create_feature_count_table.log"
+rule creat_featureCount_exon_table:
+    input:  feature_count = expand("qc_reports/{sample}/featureCount_exon/{sample}.featureCount_exon.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_featureCount_exon/complete_featureCount_exon_table.tsv",
+    log:    "logs/DE/create_featureCount_exon_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_featureCount_gene_table:
+    input:  feature_count = expand("qc_reports/{sample}/featureCount_gene/{sample}.featureCount_gene.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_featureCount_gene/complete_featureCount_gene_table.tsv",
+    log:    "logs/DE/create_featureCount_gene_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_featureCount_transcript_table:
+    input:  feature_count = expand("qc_reports/{sample}/featureCount_transcript/{sample}.featureCount_transcript.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_featureCount_transcript/complete_featureCount_transcript_table.tsv",
+    log:    "logs/DE/create_featureCount_transcript_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_featureCount_3pUTR_table:
+    input:  feature_count = expand("qc_reports/{sample}/featureCount_3pUTR/{sample}.featureCount_3pUTR.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_featureCount_3pUTR/complete_featureCount_3pUTR_table.tsv",
+    log:    "logs/DE/create_featureCount_3pUTR_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_featureCount_5pUTR_table:
+    input:  feature_count = expand("qc_reports/{sample}/featureCount_5pUTR/{sample}.featureCount_5pUTR.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_featureCount_5pUTR/complete_featureCount_5pUTR_table.tsv",
+    log:    "logs/DE/create_featureCount_5pUTR_table.log"
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
     script: "../wrappers/analysis_feature_count_table/script.py"
 
 def count_tab_input(wildcards):
-    if wildcards.analysis_type == "feature_count":
+    if wildcards.analysis_type.split("_")[0] == "featureCount":
         suffix = "tsv"
     else:
         suffix = "RData"

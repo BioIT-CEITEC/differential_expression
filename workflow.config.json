@@ -1,11 +1,19 @@
 {
   "workflow_description": {
     "name":"differential_expression",
-    "version": 2.0,
+    "version": 2.3,
     "label":"Differential expression",
     "type":"differential_expression",
-    "inputs":[
-      "qc_reports/{sample}/*/{sample}.*.*"
+    "inputs_optional":[
+      "qc_reports/{sample}/RSEM/{sample}.*.*",
+      "qc_reports/{sample}/featureCount_exon/{sample}.*.*",
+      "qc_reports/{sample}/featureCount_gene/{sample}.*.*",
+      "qc_reports/{sample}/featureCount_transcript/{sample}.*.*",
+      "qc_reports/{sample}/featureCount_3pUTR/{sample}.*.*",
+      "qc_reports/{sample}/featureCount_5pUTR/{sample}.*.*",
+      "qc_reports/{sample}/kallisto/{sample}.*.*",
+      "qc_reports/{sample}/salmon_map/{sample}.*.*",
+      "qc_reports/{sample}/salmon_aln/{sample}.*.*"
     ],
     "outputs":[
       "logs",
@@ -13,7 +21,11 @@
     ],
     "outputs_optional":[
       "DE_RSEM",
-      "DE_feature_count",
+      "DE_featureCount_exon",
+      "DE_featureCount_gene",
+      "DE_featureCount_transcript",
+      "DE_featureCount_3pUTR",
+      "DE_featureCount_5pUTR",
       "DE_salmon_map",
       "DE_salmon_align",
       "DE_kallisto"
@@ -29,7 +41,11 @@
   ],
   "requested_params": [
     "reference",
-    "feature_count",
+    "featureCount_exon",
+    "featureCount_gene",
+    "featureCount_transcript",
+    "featureCount_3pUTR",
+    "featureCount_5pUTR",
     "RSEM",
     "salmon_map",
     "salmon_align",
