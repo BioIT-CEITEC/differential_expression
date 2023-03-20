@@ -8,15 +8,15 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   vennTable <- merge(comp_res[,.(Feature_name,DESeq2 = significant_DE * sign(log2FoldChange),DESeq2_padj = padj,DESeq2_log2FoldChange = log2FoldChange)],
                         edgeR_comp_res[,.(Feature_name,edgeR = significant_DE * sign(log2FoldChange),edgeR_padj = padj,edgeR_log2FoldChange = log2FoldChange)],by = "Feature_name")
   
-  upsetTable <- merge(comp_res[,.(Ensembl_Id, DESeq2_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
-                                  DESeq2_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0),
-                                  DESeq2_no_filter_up = ifelse(no_filter_significant_DE * sign(log2FoldChange) == 1,1,0),
-                                  DESeq2_no_filter_down = ifelse(no_filter_significant_DE * sign(log2FoldChange) == -1,1,0))],
-                      edgeR_comp_res[,.(Ensembl_Id, edgeR_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
-                                        edgeR_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0))],by = "Ensembl_Id")
-
-  upsetTable[,test:=1]
-  setcolorder(upsetTable,c("Ensembl_Id","test"))
+  # upsetTable <- merge(comp_res[,.(Ensembl_Id, DESeq2_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
+  #                                 DESeq2_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0),
+  #                                 DESeq2_no_filter_up = ifelse(no_filter_significant_DE * sign(log2FoldChange) == 1,1,0),
+  #                                 DESeq2_no_filter_down = ifelse(no_filter_significant_DE * sign(log2FoldChange) == -1,1,0))],
+  #                     edgeR_comp_res[,.(Ensembl_Id, edgeR_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
+  #                                       edgeR_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0))],by = "Ensembl_Id")
+  #
+  # upsetTable[,test:=1]
+  # setcolorder(upsetTable,c("Ensembl_Id","test"))
 
   if(!is.null(dev.list())) {dev.off()}
 
@@ -30,17 +30,17 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   dev.off()
   if(!is.null(dev.list())) {dev.off()}
 
-  png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300)
-  UpSetR::upset(upsetTable,
-                     nintersects = NA,
-                     nsets = 6,
-                     sets = c("DESeq2_down","DESeq2_no_filter_down","edgeR_down","edgeR_up","DESeq2_no_filter_up","DESeq2_up"),
-                     keep.order = T,
-                     text.scale = 1.2,
-                     main.bar.color = "black"
-                     )
-  dev.off()
-  
+  # png(file="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300)
+  # UpSetR::upset(upsetTable,
+  #                    nintersects = NA,
+  #                    nsets = 6,
+  #                    sets = c("DESeq2_down","DESeq2_no_filter_down","edgeR_down","edgeR_up","DESeq2_no_filter_up","DESeq2_up"),
+  #                    keep.order = T,
+  #                    text.scale = 1.2,
+  #                    main.bar.color = "black"
+  #                    )
+  # dev.off()
+  #
   # Add gene names
   vennTable[,DESeq2_edgeR_mean_padj := (DESeq2_padj + edgeR_padj) / 2]
   setorder(vennTable,DESeq2_edgeR_mean_padj,na.last = T)
