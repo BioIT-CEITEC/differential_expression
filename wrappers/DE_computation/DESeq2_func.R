@@ -505,7 +505,7 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
 
   setorder(comp_res,padj,-abs_log2FoldChange,na.last = T) # Make sure res is ordered by adj.p-value
 
-  if(TOP > 0){
+  if(TOP >= 0){
     options(ggrepel.max.overlaps = 2*TOP)
     #volcano plot
 
