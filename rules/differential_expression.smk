@@ -61,7 +61,11 @@ rule DE_computation:
             pvalue_for_viz= config["pvalue_for_viz"],
             fold_change_threshold= config["fold_change_threshold"],
             named_in_viz= config["named_in_viz"],
-            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"]
+            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
+            geneList= config["filter_geneList"],
+            keepGene=config["filter_keepGene"],
+            chrmList=config["filter_chrmList"],
+            keepChrm=config["filter_keepChrm"],
     log:    "logs/DE/DE_{analysis_type}.log"
     conda:  "../wrappers/DE_computation/env.yaml"
     script: "../wrappers/DE_computation/script.py"

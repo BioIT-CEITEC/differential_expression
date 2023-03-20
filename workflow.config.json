@@ -106,6 +106,26 @@
         "label": "Named in viz",
         "type": "int",
         "default": 20
+      },
+      "filter_geneList": {
+        "label": "List of genes to filter",
+        "type": "string",
+        "default": "all"
+      },
+      "filter_keepGene": {
+        "label": "List of genes: true (keep), false (remove)",
+        "type": "bool",
+        "default": true
+      },
+      "filter_chrmList": {
+        "label": "List of chromosomes to filter",
+        "type": "string",
+        "default": "all"
+      },
+      "filter_keepChrm": {
+        "label": "List of chromosomes: true (keep), false (remove)",
+        "type": "bool",
+        "default": true
       }
     },
     "samples": {

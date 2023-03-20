@@ -28,6 +28,10 @@ command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/DE_computation
             str(snakemake.params.fold_change_threshold) + " " +\
             str(snakemake.params.named_in_viz) + " " +\
             str(snakemake.params.remove_genes_with_mean_read_count_threshold) + " " +\
+            str(snakemake.params.geneList) + " " +\
+            str(snakemake.params.keepGene) + " " +\
+            str(snakemake.params.chrmList) + " " +\
+            str(snakemake.params.keepChrm) + " " +\
             " >> " + log_filename + " 2>&1"
 
 f = open(log_filename, 'a+')

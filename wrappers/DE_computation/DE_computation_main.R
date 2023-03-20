@@ -51,6 +51,10 @@ run_all <- function(args){
   lfc_threshold <- log(as.numeric(args[10]),2)
   TOP <- as.integer(args[11])
   remove_genes_with_mean_read_count_threshold <- as.integer(args[12])
+  geneList <- args[13]
+  keepGene <- as.logical(toupper(args[14]))
+  chrmList <- args[15]
+  keepChrm <- as.logical(toupper(args[16]))
   INTERCEPT<-TRUE
   
   output_dir <- paste0(getwd(),"/",relative_output_dir)
@@ -60,7 +64,7 @@ run_all <- function(args){
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
   
-  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type)
+  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm)
   count_dt <- res_list[[1]]
   txi <- res_list[[2]]
   
