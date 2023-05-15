@@ -34,7 +34,7 @@ library(svglite)
 library(plotly)
 library(htmlwidgets)
 library(rtracklayer)
-library(UpSetR)
+library(ggupset)
 
 run_all <- function(args){
   
