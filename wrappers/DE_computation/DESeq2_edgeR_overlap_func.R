@@ -29,7 +29,7 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
     ylab("Number of DE genes") +
     scale_x_upset(n_intersections = 20)
 
-  ggsave(plot=upsetPlot, filename="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",res=300,device="png")
+  ggsave(plot=upsetPlot, filename="overlap_DESeq2_edgeR_upset.png",width = 7,height = 7,units="in",dpi=300,device="png")
 
   if(!is.null(dev.list())) {dev.off()}
 
