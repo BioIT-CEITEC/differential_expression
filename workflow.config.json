@@ -41,11 +41,8 @@
   ],
   "requested_params": [
     "reference",
-    "featureCount_exon",
-    "featureCount_gene",
-    "featureCount_transcript",
-    "featureCount_3pUTR",
-    "featureCount_5pUTR",
+    "featureCount",
+    "count_over",
     "RSEM",
     "salmon_map",
     "salmon_align",

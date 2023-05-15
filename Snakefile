@@ -59,18 +59,26 @@ else:
     if not config['keep_not_compared_samples_for_normalization']:
         sample_tab = sample_tab[sample_tab['condition'].isin(condition_list)]
 
-#
+#set analysis selected analysis types from config and rise exception if no selected
 analysis = []
-if config["featureCount_exon"]:
-    analysis.append("featureCount_exon")
-if config["featureCount_gene"]:
-    analysis.append("featureCount_gene")
-if config["featureCount_transcript"]:
-    analysis.append("featureCount_transcript")
-if config["featureCount_3pUTR"]:
-    analysis.append("featureCount_3pUTR")
-if config["featureCount_5pUTR"]:
-    analysis.append("featureCount_5pUTR")
+if config["featureCount"]:
+    count_over_list = config['count_over'].split(",")
+    if ("exon" in count_over_list):
+        config["featureCount_exon"] = True
+        analysis.append("featureCount_exon")
+    if ("gene" in count_over_list):
+        config["featureCount_gene"] = True
+        analysis.append("featureCount_gene")
+    if ("transcript" in count_over_list):
+        config["featureCount_transcript"] = True
+        analysis.append("featureCount_transcript")
+    if ("three_prime_UTR" in count_over_list):
+        config["featureCount_3pUTR"] = True
+        analysis.append("featureCount_3pUTR")
+    if ("five_prime_UTR" in count_over_list):
+        config["featureCount_5pUTR"] = True
+        analysis.append("featureCount_5pUTR")
+
 if config["RSEM"]:
     analysis.append("RSEM")
 if config["salmon_align"]:
@@ -79,6 +87,9 @@ if config["salmon_map"]:
     analysis.append("salmon_map")
 if config["kallisto"]:
     analysis.append("kallisto")
+if len(analysis) == 0:
+    raise ValueError("There was no RSEM or featureCount used in previous analysis!")
+
 
 biotype_dir_list = config['biotypes'].split(",")
 
@@ -87,28 +98,28 @@ config["biotype_list"] = "|".join(biotype_dir_list)
 config["comparison"] = "|".join(comparison_dir_list)
 
 #set analysis selected analysis types from config and rise exception if no selected
-selected_analysis_types = []
-if config["featureCount_exon"]:
-    selected_analysis_types.append("featureCount_exon")
-if config["featureCount_gene"]:
-    selected_analysis_types.append("featureCount_gene")
-if config["featureCount_transcript"]:
-    selected_analysis_types.append("featureCount_transcript")
-if config["featureCount_3pUTR"]:
-    selected_analysis_types.append("featureCount_3pUTR")
-if config["featureCount_5pUTR"]:
-    selected_analysis_types.append("featureCount_5pUTR")
-if config["RSEM"]:
-    selected_analysis_types.append("RSEM")
-if config["salmon_map"]:
-    selected_analysis_types.append("salmon_map")
-if config["salmon_align"]:
-    selected_analysis_types.append("salmon_align")
-if config["kallisto"]:
-    selected_analysis_types.append("kallisto")
-
-if len(selected_analysis_types) == 0:
-    raise ValueError("There was no RSEM or featureCount used in previous analysis!")
+# selected_analysis_types = []
+# if config["featureCount_exon"]:
+#     selected_analysis_types.append("featureCount_exon")
+# if config["featureCount_gene"]:
+#     selected_analysis_types.append("featureCount_gene")
+# if config["featureCount_transcript"]:
+#     selected_analysis_types.append("featureCount_transcript")
+# if config["featureCount_3pUTR"]:
+#     selected_analysis_types.append("featureCount_3pUTR")
+# if config["featureCount_5pUTR"]:
+#     selected_analysis_types.append("featureCount_5pUTR")
+# if config["RSEM"]:
+#     selected_analysis_types.append("RSEM")
+# if config["salmon_map"]:
+#     selected_analysis_types.append("salmon_map")
+# if config["salmon_align"]:
+#     selected_analysis_types.append("salmon_align")
+# if config["kallisto"]:
+#     selected_analysis_types.append("kallisto")
+#
+# if len(selected_analysis_types) == 0:
+#     raise ValueError("There was no RSEM or featureCount used in previous analysis!")
 
 
 wildcard_constraints:
