@@ -4,6 +4,7 @@
     "version": 2.3,
     "label":"Differential expression",
     "type":"differential_expression",
+    "inputs": [],
     "inputs_optional":[
       "qc_reports/{sample}/RSEM/{sample}.*.*",
       "qc_reports/{sample}/featureCount_exon/{sample}.*.*",
