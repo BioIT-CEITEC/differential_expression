@@ -13,7 +13,7 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
 }
 
 run_all <- function(file_list,output_file){
-  res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.feature_count.tsv$")
+  res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.featureCount.*.tsv$")
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
   res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
