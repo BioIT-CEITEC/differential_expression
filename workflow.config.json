@@ -4,6 +4,10 @@
     "version": 2.3,
     "label":"Differential expression",
     "type":"differential_expression",
+    "run_parameters": {
+      "cpu": 2,
+      "memory": 65
+    },
     "inputs": [],
     "inputs_optional":[
       "qc_reports/{sample}/RSEM/{sample}.*.*",
