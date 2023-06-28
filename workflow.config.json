@@ -1,9 +1,13 @@
 {
   "workflow_description": {
     "name":"differential_expression",
-    "version": 2.0,
+    "version": 2.2,
     "label":"Differential expression",
     "type":"differential_expression",
+    "run_parameters": {
+      "cpu": 2,
+      "memory": 65
+    },
     "inputs":[
       "qc_reports/{sample}/*/{sample}.*.*"
     ],
