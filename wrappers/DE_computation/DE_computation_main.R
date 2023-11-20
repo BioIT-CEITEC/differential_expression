@@ -64,7 +64,7 @@ run_all <- function(args){
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
   
-  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm)
+  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold)
   count_dt <- res_list[[1]]
   txi <- res_list[[2]]
   

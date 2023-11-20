@@ -73,7 +73,7 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
   }
 
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm){
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold){
   
   feat_type <- "gene"
   annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")

@@ -2,22 +2,26 @@
 hmcol <<- colorRampPalette(brewer.pal(9, "GnBu"))(100)
 
 count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_compare_vec = condition_to_compare_vec, name4row = "Ensembl_Id"){
+  dt <- count_dt[condition %in% condition_to_compare_vec,]
+  samples_name_list <- unique(dt$sample_name)
+
   if(name4row == "Ensembl_Id"){
     res <- dcast.data.table(count_dt,Ensembl_Id ~ condition + sample_name,value.var = value_var, sep="::")
     names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
+    setcolorder(res, c("Ensembl_Id", samples_name_list))
     #names(res) <- names(res)
     mat <- as.matrix(res[,-1,with = F],rownames.force = T)
     rownames(mat) <- res$Ensembl_Id
   }else{
     res <- dcast.data.table(count_dt,Feature_name ~ condition + sample_name,value.var = value_var, sep="::")
     names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
+    setcolorder(res, c("Ensembl_Id", samples_name_list))
     #names(res) <- names(res)
     mat <- as.matrix(res[,-1,with = F],rownames.force = T)
     rownames(mat) <- res$Feature_name
   }
   return(mat)
 }
-
 
 get_title_from_design <- function(experiment_design,prefix = "",suffix = "",non_dual_text = "",connection = " "){
   if(length(unique(experiment_design$condition)) > 2) {
@@ -100,15 +104,15 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   dds<-estimateDispersions(dds)
   dds<-nbinomWaldTest(dds)
 
-  count_dt[,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
-  count_dt[,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
-  count_dt[,log2counts := log2(normcounts+1)]
-  count_dt[,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
+  count_dt[sum_count > remove_genes_with_mean_read_count_threshold,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
+  count_dt[sum_count > remove_genes_with_mean_read_count_threshold,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
+  count_dt[sum_count > remove_genes_with_mean_read_count_threshold,log2counts := log2(normcounts+1)]
+  count_dt[sum_count > remove_genes_with_mean_read_count_threshold,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
 
   if(paired_samples==TRUE){ # If paired - remove batch effect
-    count_dt[,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[sum_count > remove_genes_with_mean_read_count_threshold,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[sum_count > remove_genes_with_mean_read_count_threshold,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[sum_count > remove_genes_with_mean_read_count_threshold,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
   }
 
   #count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")
@@ -133,12 +137,13 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   #set paired samples if more then one sample belongs to one patient(batch)
   paired_samples <- length(unique(experiment_design_dt$patient)) != nrow(experiment_design_dt)
 
+  fwrite(experiment_design_dt,"DESeq2_experiment_design.tsv",sep = "\t")
 
-  if(paired_samples){
-    fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition,`Batch/patient pairing` = patient)],"DESeq2_experiment_design.tsv",sep = "\t")
-  } else {
-    fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition)],"DESeq2_experiment_design.tsv",sep = "\t")
-  }
+  # if(paired_samples){
+  #   fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition,`Batch/patient pairing` = patient)],"DESeq2_experiment_design.tsv",sep = "\t")
+  # } else {
+  #   fwrite(experiment_design_dt[,.(`Sample name` = sample_name,`Condition` = condition)],"DESeq2_experiment_design.tsv",sep = "\t")
+  # }
 
 
 
@@ -321,6 +326,9 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
   pca.dt <- as.data.table(prcomp_data$x, keep.rownames = T)
   setnames(pca.dt,"rn","sample_name")
   fwrite(pca.dt,"sample_to_sample_PCA.tsv", sep="\t")
+  pca.summary <- as.data.table(summary(prcomp_data)$importance,keep.rownames = T)
+  setnames(pca.summary,"rn","summary_data")
+  fwrite(pca.summary,"sample_to_sample_PCA_summary.tsv", sep="\t")
 
   pca1S <- get_pca_plot(prcomp_data,experiment_design_dt,pca_title)
 
