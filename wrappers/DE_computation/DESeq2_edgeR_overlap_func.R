@@ -15,8 +15,10 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                       edgeR_comp_res[,.(Ensembl_Id, edgeR_up = ifelse(significant_DE * sign(log2FoldChange) == 1,1,0),
                                         edgeR_down = ifelse(significant_DE * sign(log2FoldChange) == -1,1,0))],by = "Ensembl_Id")
 
-  #upsetTable[,test:=1]
-  #setcolorder(upsetTable,c("Ensembl_Id","test"))
+  upsetTableR <- copy(upsetTable)
+  upsetTableR[,test:=1]
+  setcolorder(upsetTableR,c("Ensembl_Id","test"))
+
   upsetTable[,not_DE:=ifelse(sum(DESeq2_up,DESeq2_down,DESeq2_no_filter_up,DESeq2_no_filter_down,edgeR_up,edgeR_down)==0,1,0), by=.(Ensembl_Id)]
   upsetTable<-melt(upsetTable,id.vars = "Ensembl_Id")
   upsetTable[,variable:=as.character(variable)]
@@ -45,7 +47,7 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   if(!is.null(dev.list())) {dev.off()}
 
   png(file="overlap_DESeq2_edgeR_upsetR.png",width = 7,height = 7,units="in",res=300)
-  print(UpSetR::upset(upsetTable,
+  print(UpSetR::upset(upsetTableR,
                      nintersects = NA,
                      nsets = 6,
                      sets = c("DESeq2_down","DESeq2_no_filter_down","edgeR_down","edgeR_up","DESeq2_no_filter_up","DESeq2_up"),

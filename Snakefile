@@ -7,6 +7,14 @@ import re
 min_version("5.18.0")
 
 configfile: "config.json"
+
+module UTILS:
+    snakefile: gitlab("bioroots/bioroots_utilities", path="bioroots_utilities.smk",branch="master")
+    config: config
+
+use rule * from UTILS as utils_*
+
+##### Config processing #####
 GLOBAL_REF_PATH = config["globalResources"]
 
 # setting organism from reference
@@ -96,31 +104,6 @@ biotype_dir_list = config['biotypes'].split(",")
 config["analysis_type"] = "|".join(analysis)
 config["biotype_list"] = "|".join(biotype_dir_list)
 config["comparison"] = "|".join(comparison_dir_list)
-
-#set analysis selected analysis types from config and rise exception if no selected
-# selected_analysis_types = []
-# if config["featureCount_exon"]:
-#     selected_analysis_types.append("featureCount_exon")
-# if config["featureCount_gene"]:
-#     selected_analysis_types.append("featureCount_gene")
-# if config["featureCount_transcript"]:
-#     selected_analysis_types.append("featureCount_transcript")
-# if config["featureCount_3pUTR"]:
-#     selected_analysis_types.append("featureCount_3pUTR")
-# if config["featureCount_5pUTR"]:
-#     selected_analysis_types.append("featureCount_5pUTR")
-# if config["RSEM"]:
-#     selected_analysis_types.append("RSEM")
-# if config["salmon_map"]:
-#     selected_analysis_types.append("salmon_map")
-# if config["salmon_align"]:
-#     selected_analysis_types.append("salmon_align")
-# if config["kallisto"]:
-#     selected_analysis_types.append("kallisto")
-#
-# if len(selected_analysis_types) == 0:
-#     raise ValueError("There was no RSEM or featureCount used in previous analysis!")
-
 
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
