@@ -15,7 +15,7 @@ count_matrix_from_dt <- function(count_dt, value_var = "count", condition_to_com
   }else{
     res <- dcast.data.table(count_dt,Feature_name ~ condition + sample_name,value.var = value_var, sep="::")
     names(res) <- gsub(paste(unlist(paste0(condition_to_compare_vec,"::")), collapse = "|"), "", names(res))
-    setcolorder(res, c("Ensembl_Id", samples_name_list))
+    setcolorder(res, c("Feature_name", samples_name_list))
     #names(res) <- names(res)
     mat <- as.matrix(res[,-1,with = F],rownames.force = T)
     rownames(mat) <- res$Feature_name
