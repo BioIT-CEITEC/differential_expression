@@ -53,7 +53,8 @@
     "RSEM",
     "salmon_map",
     "salmon_align",
-    "kallisto"
+    "kallisto",
+    "is_mirna"
   ],
   "gui_params" : {
     "primary": {
@@ -80,11 +81,6 @@
             }
           }
         }
-      },
-      "is_mirna": {
-        "label": "miRNA samples.",
-        "type": "bool",
-        "default": false
       }
     },
     "detailed": {
