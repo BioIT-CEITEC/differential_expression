@@ -13,6 +13,7 @@ f.close()
 
 command = " Rscript "+os.path.abspath(os.path.dirname(__file__))+"/combine_feature_count_tabs.R "+\
             snakemake.output.table+ " " +\
+            snakemake.params.is_mirna+ " " +\
             " ".join(snakemake.input.feature_count)
 
 f = open(log_filename, 'a+')

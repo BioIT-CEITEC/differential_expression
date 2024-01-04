@@ -50,10 +50,11 @@ biotype <- unlist(strsplit(unique(config_json$biotype_list),split="\\|"))
 analysis_type <- data.table(analysis=unlist(strsplit(unique(config_json$analysis_type),split="\\|")))
 analysis_type <- analysis_type[,DE := paste0("DE_",analysis)] # feature_count is usually run by default
 analysis_type <- analysis_type[, name := analysis]
-analysis_type <- analysis_type[name == "feature_count", name := "featureCount"]
+analysis_type <- analysis_type[name %like% "featureCount", name := gsub("_"," ",name)]
 analysis_type <- analysis_type[name == "kallisto", name := "Kallisto"]
 analysis_type <- analysis_type[name == "salmon_align", name := "Salmon (alignment mode)"]
 analysis_type <- analysis_type[name == "salmon_map", name := "Salmon (mapping mode)"]
+analysis_type <- analysis_type[name %like% "mirbase", name := gsub("_"," ",name)]
 
 `%!in%` <- Negate(`%in%`)
 `%!like%` <- Negate(`%like%`)

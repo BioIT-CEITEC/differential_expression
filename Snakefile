@@ -1,43 +1,27 @@
-import os
 import pandas as pd
-import json
 from snakemake.utils import min_version
-import re
 
 min_version("5.18.0")
 
 configfile: "config.json"
 
-module UTILS:
+GLOBAL_REF_PATH = config["globalResources"]
+GLOBAL_TMPD_PATH = config["globalTmpdPath"]
+
+os.makedirs(GLOBAL_TMPD_PATH, exist_ok=True)
+
+##### BioRoot utilities #####
+module BR:
     snakefile: gitlab("bioroots/bioroots_utilities", path="bioroots_utilities.smk",branch="master")
     config: config
 
-use rule * from UTILS as utils_*
+use rule * from BR as other_*
 
 ##### Config processing #####
-GLOBAL_REF_PATH = config["globalResources"]
 
-# setting organism from reference
-f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference2.json"),)
-reference_dict = json.load(f)
-f.close()
-config["species_name"] = [organism_name for organism_name in reference_dict.keys() if isinstance(reference_dict[organism_name],dict) and config["reference"] in reference_dict[organism_name].keys()][0]
-config["organism"] = config["species_name"].split(" (")[0].lower().replace(" ","_")
-if len(config["species_name"].split(" (")) > 1:
-    config["species"] = config["species_name"].split(" (")[1].replace(")","")
+sample_tab = BR.load_sample()
 
-##### Config processing #####
-# Folders
-#
-reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["reference"])
-
-# Samples
-#
-sample_tab = pd.DataFrame.from_dict(config["samples"],orient="index")
-
-if (sample_tab.condition == "").all():
-    raise ValueError("There are no conditions set for samples!")
-
+config = BR.load_organism()
 
 def get_comparison_dir_list(condition_list):
     comparison_dir_list = list()
@@ -95,6 +79,8 @@ if config["salmon_map"]:
     analysis.append("salmon_map")
 if config["kallisto"]:
     analysis.append("kallisto")
+if config["is_mirna"]:
+    analysis.append("mirbase_canonical")
 if len(analysis) == 0:
     raise ValueError("There was no RSEM or featureCount used in previous analysis!")
 
@@ -108,7 +94,7 @@ config["comparison"] = "|".join(comparison_dir_list)
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical",
      #data_type= "tsv|RData"
 
 os.makedirs("DE_report",exist_ok=True)

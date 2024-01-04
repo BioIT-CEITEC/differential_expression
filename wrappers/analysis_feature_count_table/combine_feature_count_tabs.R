@@ -13,7 +13,11 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
 }
 
 run_all <- function(file_list,output_file){
-  res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.featureCount.*.tsv$")
+  if(is_mirna == FALSE){
+    res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.featureCount.*.tsv$")
+  }else{
+    res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.mirbase.*.tsv$")
+  }
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
   res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
@@ -26,6 +30,7 @@ run_all <- function(file_list,output_file){
 
 # run as Rscript
 args <- commandArgs(trailingOnly = T)
-file_list <- tail(args,-1)
+file_list <- tail(args,-2)
 output_file <- args[1]
+is_mirna <- as.logical(toupper(args[2]))
 run_all(file_list,output_file)

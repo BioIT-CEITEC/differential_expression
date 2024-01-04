@@ -1,3 +1,5 @@
+`%!in%` <- Negate(`%in%`)
+`%!like%` <- Negate(`%like%`)
 
 read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,paired_samples,use_custom_batch_effect_grouping){
   experiment_design <- fread(experiment_design_file)
@@ -73,27 +75,30 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
   }
 
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold){
-  
-  feat_type <- "gene"
-  annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")
-  gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
-  setnames(gtf_gene_tab,c("Geneid","Chr","Gene_name","biotype"))
-  gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]       
-  gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
-  gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
-  gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
-  gtf_gene_tab[,duplicated := NULL]
-  setnames(gtf_gene_tab,"Gene_name","Feature_name")
-  setkey(gtf_gene_tab,"Geneid")
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,is_mirna=FALSE){
 
-  gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
+  if(analysis_type %!like% "mirbase"){
+    feat_type <- "gene"
+    annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")
+    gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
+    setnames(gtf_gene_tab,c("Geneid","Chr","Gene_name","biotype"))
+    gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]
+    gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
+    gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
+    gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
+    gtf_gene_tab[,duplicated := NULL]
+    setnames(gtf_gene_tab,"Gene_name","Feature_name")
+    setkey(gtf_gene_tab,"Geneid")
 
-  if(analysis_type %like% "featureCount"){
+    gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
+  }
+
+  if(analysis_type %like% "featureCount" | analysis_type %like% "mirbase"){
     txi <- NULL
     
     count_dt <- fread(counts_file)
     setnames(count_dt,make.names(colnames(count_dt)))
+    setnames(count_dt,"mirna","Geneid", skip_absent = T)
     count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
     
     
@@ -144,7 +149,11 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   
   count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
   count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
-  count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
+  if(analysis_type %like% "mirbase"){
+    count_dt[,`:=`(Feature_name=Geneid, gene_name=Geneid)]
+  }else{
+    count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
+  }
   setnames(count_dt,"Geneid","Ensembl_Id")
   count_dt[,sum_count := sum(count),by = Feature_name]
   count_dt <- count_dt[sum_count > 0,]
