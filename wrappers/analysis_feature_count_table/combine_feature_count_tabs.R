@@ -1,6 +1,6 @@
 library(data.table)
 
-fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
+fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample",sample_column=7){
   rbindlist(lapply(file_list,function(x){
     res <- fread(x)
     if(is.null(regex)){
@@ -8,19 +8,23 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
     } else {
       res[,(add_column) := gsub(regex,"\\1",x)]
     }
-    setnames(res,names(res)[7],"counts")
+    setnames(res,names(res)[sample_column],"counts")
   }))
 }
 
 run_all <- function(file_list,output_file){
   if(is_mirna == FALSE){
-    res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.featureCount.*.tsv$")
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.featureCount.*.tsv$")
   }else{
-    res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.mirbase.*.tsv$")
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.mirbase.*.tsv$",sample_column=2)
   }
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
-  res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
+  if(is_mirna == FALSE){
+    res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
+  }else{
+    res_tab <- dcast.data.table(res_tab,mirna ~ sample,value.var = "count")
+  }
   write.table(res_tab,file = output_file,quote = F,row.names = F,col.names = T,sep = "\t")
 }
 
