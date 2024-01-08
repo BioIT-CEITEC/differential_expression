@@ -1,6 +1,6 @@
 rule creat_salmon_map_table:
     input:  salmon = expand("qc_reports/{sample}/salmon_map/{sample}.salmon_map.sf",sample=sample_tab.sample_name),
-            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+            gtf= config["organism_gtf"],
     output: salmon = "DE_salmon_map/complete_salmon_map_table.RData"
     log:    "logs/DE/create_salmon_map_table.log"
     conda:  "../wrappers/analysis_salmon_table/env.yaml"
@@ -8,7 +8,7 @@ rule creat_salmon_map_table:
 
 rule creat_salmon_align_table:
     input:  salmon = expand("qc_reports/{sample}/salmon_aln/{sample}.salmon_aln.sf",sample=sample_tab.sample_name),
-            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+            gtf= config["organism_gtf"],
     output: salmon = "DE_salmon_align/complete_salmon_align_table.RData"
     log:    "logs/DE/create_salmon_align_table.log"
     conda:  "../wrappers/analysis_salmon_table/env.yaml"
@@ -16,7 +16,7 @@ rule creat_salmon_align_table:
 
 rule creat_kallisto_table:
     input:  kallisto = expand("qc_reports/{sample}/kallisto/{sample}.kallisto.tsv",sample=sample_tab.sample_name),
-            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+            gtf= config["organism_gtf"],
     output: kallisto = "DE_kallisto/complete_kallisto_table.RData"
     log:    "logs/DE/create_kallisto_table.log"
     conda:  "../wrappers/analysis_kallisto_table/env.yaml"
@@ -24,7 +24,7 @@ rule creat_kallisto_table:
 
 rule creat_RSEM_table:
     input:  RSEM = expand("qc_reports/{sample}/RSEM/{sample}.genes.results",sample=sample_tab.sample_name),
-            gtf= expand("{ref_dir}/annot/{ref}.gtf",ref_dir=reference_directory,ref=config["reference"])[0],
+            gtf= config["organism_gtf"],
     output: RSEM = "DE_RSEM/complete_RSEM_table.RData"
     log:    "logs/DE/create_RSEM_table.log"
     conda:  "../wrappers/analysis_RSEM_table/env.yaml"
