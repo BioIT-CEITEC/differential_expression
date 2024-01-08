@@ -125,6 +125,8 @@ def input_all(wildcards):
         input["salmon_align"] = "DE_salmon_align/final_report.html"
     if config["kallisto"]:
         input["kallisto"] = "DE_kallisto/final_report.html"
+    if config["is_mirna"]:
+        input["mirbase"] = "DE_mirbase_canonical/final_report.html"
     return input
 
 rule all:
