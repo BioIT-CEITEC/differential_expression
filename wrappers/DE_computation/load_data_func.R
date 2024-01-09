@@ -150,7 +150,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
   count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
   if(analysis_type %like% "mirbase"){
-    count_dt[,`:=`(Feature_name=Geneid, gene_name=Geneid)]
+    count_dt[,`:=`(Feature_name=Geneid, biotype="miRNA")]
   }else{
     count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
   }
