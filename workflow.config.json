@@ -117,8 +117,8 @@
       },
       "fold_change_threshold": {
         "label": "Fold change threshold",
-        "type": "int",
-        "default": 2
+        "type": "string",
+        "default": "2"
       },
       "named_in_viz": {
         "label": "Named in viz",

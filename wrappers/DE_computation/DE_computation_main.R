@@ -13,8 +13,8 @@
 # parsed_ensembl - table with gene_id, gene_name and gene_biotype based in Ensembl
 # biotypes - table with name and biotype_group where name equals gene biotype
 ####################################################################################################
-# TODO: Add tSNE clustering
-# TODO: Add shared DE genes visualization (inspiration at VBCF BioComp)
+# TO DO: Add tSNE clustering
+# TO DO: Add shared DE genes visualization (inspiration at VBCF BioComp)
 #####################################################################################################
 
 #devtools::install_github("r-lib/later")
@@ -122,7 +122,11 @@ run_all <- function(args){
       ################
       create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison,"/edgeR"),edgeR_DGEList,count_dt[condition %in% condsToCompare],reduced_plot_design = T)
     }
-    
+
+    saveRDS(dds, paste0(output_dir,"/",selected_comparison,"/dds.RDS"))
+    saveRDS(count_dt, paste0(output_dir,"/",selected_comparison,"/count_dt.RDS"))
+    saveRDS(edgeR_DGEList, paste0(output_dir,"/",selected_comparison,"/edgeR/edgeR_DGEList.RDS"))
+
     #DESeq2 part
     ################
     comp_res <- get_comparison_specific_DESeq2_table(dds,count_dt,experiment_design,condsToCompare,output_dir = paste0(output_dir,"/",selected_comparison),p_value_threshold,lfc_threshold)
