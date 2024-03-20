@@ -311,7 +311,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
     }
 
     # calculate the variance for each gene
-    rv <- rowVars(vstcounts)
+    rv <- rowVars(vstcounts, useNames=FALSE)
     # select the ntop genes by variance
     select <- order(rv, decreasing=TRUE)[seq_len(min(500, length(rv)))]
     # perform a PCA on the data in vstcounts for the selected genes
