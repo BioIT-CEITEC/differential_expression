@@ -46,8 +46,9 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
   dev.off()
   if(!is.null(dev.list())) {dev.off()}
 
-  png(file="overlap_DESeq2_edgeR_upsetR.png",width = 7,height = 7,units="in",res=300)
-  print(UpSetR::upset(upsetTableR,
+  if(upsetTableR[,sum(DESeq2_up,DESeq2_down,DESeq2_no_filter_up,DESeq2_no_filter_down,edgeR_up,edgeR_down)]>0){
+    png(file="overlap_DESeq2_edgeR_upsetR.png",width = 7,height = 7,units="in",res=300)
+    print(UpSetR::upset(upsetTableR,
                      nintersects = NA,
                      nsets = 6,
                      sets = c("DESeq2_down","DESeq2_no_filter_down","edgeR_down","edgeR_up","DESeq2_no_filter_up","DESeq2_up"),
@@ -55,7 +56,8 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                      text.scale = 1.2,
                      main.bar.color = "black"
                      ))
-  dev.off()
+    dev.off()
+  }
 
   # Add gene names
   vennTable[,DESeq2_edgeR_mean_padj := (DESeq2_padj + edgeR_padj) / 2]
