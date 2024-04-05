@@ -53,8 +53,7 @@
     "RSEM",
     "salmon_map",
     "salmon_align",
-    "kallisto",
-    "is_mirna"
+    "kallisto"
   ],
   "gui_params" : {
     "primary": {
@@ -65,6 +64,11 @@
       },
       "paired_replicates": {
         "label": "Replicates are paired by ID.",
+        "type": "bool",
+        "default": false
+      },
+      "is_mirna": {
+        "label": "miRNA data.",
         "type": "bool",
         "default": false
       },
