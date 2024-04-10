@@ -156,9 +156,10 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   }
   setnames(count_dt,"Geneid","Ensembl_Id")
   count_dt[,sum_count := sum(count),by = Feature_name]
+  count_dt[,mean_count := mean(count),by = Feature_name]
   count_dt <- count_dt[sum_count > 0,]
   count_dt <- merge(experiment_design[,.(sample_name, condition, patient)],count_dt,by = "sample_name")
-  setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count"))
+  setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count","mean_count"))
   setkey(count_dt,Ensembl_Id,condition,patient,sample_name)
   
   return(list(count_dt,txi))
