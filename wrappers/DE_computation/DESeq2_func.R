@@ -431,11 +431,19 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   dds <- copy(dds)
 
   deseq_obj_comp_res <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=T)
-  deseq_obj_comp_res <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), res=deseq_obj_comp_res, type="normal", lfcThreshold=0)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
+  setnames(comp_res, c("log2FoldChange","lfcSE"), paste0(c("log2FoldChange","lfcSE"),"_notshrink"))
+  # lfcshrink
+  deseq_obj_comp_res <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), res=deseq_obj_comp_res, type="normal", lfcThreshold=0)
+  comp_res <- merge(as.data.table(deseq_obj_comp_res,keep.rownames=T), comp_res[,.(rn, log2FoldChange_notshrink,lfcSE_notshrink)], by = "rn")
+  # no filtering
   deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
+  comp_res_no_filt <- as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)
+  setnames(comp_res_no_filt, c("log2FoldChange","lfcSE"), paste0("no_filter_",c("log2FoldChange","lfcSE"),"_notshrink"))
+  # lfcshrink
   deseq_obj_comp_res_no_filt <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), type="normal", lfcThreshold=0,res = deseq_obj_comp_res_no_filt)
-  comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
+  comp_res_no_filt <- merge(as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)], comp_res_no_filt[,.(rn, no_filter_log2FoldChange_notshrink,no_filter_lfcSE_notshrink)],by = "rn")
+  comp_res <- merge(comp_res, comp_res_no_filt, by="rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
   comp_res[,abs_no_filter_log2FoldChange := abs(no_filter_log2FoldChange)]
   setnames(comp_res,"rn","Ensembl_Id")
@@ -479,7 +487,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
   setcolorder(comp_res,c("Ensembl_Id","baseMean","log2FoldChange","lfcSE","pvalue","padj","significant_DE","Feature_name","biotype"))
   setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
-  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange","abs_no_filter_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
+  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange","abs_no_filter_log2FoldChange","no_filter_log2FoldChange_notshrink","no_filter_lfcSE_notshrink","lfcSE_notshrink")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")
 
   setwd(orig_dir)
