@@ -75,7 +75,7 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
   }
 
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,is_mirna=FALSE){
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,is_mirna=FALSE,remove_genes_with_mean_read_count_threshold){
 
   if(analysis_type %!like% "mirbase"){
     feat_type <- "gene"
@@ -124,7 +124,14 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     txi$abundance<-txi$abundance[keep,]
     txi$counts<-txi$counts[keep,]
     txi$length<-txi$length[keep,]
-    
+
+    # filter for low counts
+    filter<-rowMeans(txi$counts)>remove_genes_with_mean_read_count_threshold & rownames(txi$counts) %in% gtf_gene_tab$Geneid
+
+    txi$abundance<-txi$abundance[filter,]
+    txi$counts<-txi$counts[filter,]
+    txi$length<-txi$length[filter,]
+
     #set correct col order
     txi$counts<-txi$counts[,match(experiment_design$sample_name, colnames(txi$counts))]
     txi$abundance<-txi$abundance[,match(experiment_design$sample_name, colnames(txi$abundance))]
@@ -158,6 +165,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
   count_dt[,sum_count := sum(count),by = Feature_name]
   count_dt[,mean_count := mean(count),by = Feature_name]
   count_dt <- count_dt[sum_count > 0,]
+  count_dt <- count_dt[mean_count > remove_genes_with_mean_read_count_threshold,]
   count_dt <- merge(experiment_design[,.(sample_name, condition, patient)],count_dt,by = "sample_name")
   setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count","mean_count"))
   setkey(count_dt,Ensembl_Id,condition,patient,sample_name)

@@ -65,7 +65,7 @@ prepare_colors_and_shapes <- function(experiment_design){
 }
 
 
-DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec){
+DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,condition_to_compare_vec){
 
   paired_samples <- length(unique(experiment_design$patient)) != nrow(experiment_design)
 
@@ -96,7 +96,7 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   }
 
   # Remove very low count genes
-  keep <- rowMeans(counts(dds)) >= remove_genes_with_mean_read_count_threshold
+  keep <- rowSums(counts(dds)) >= 0
   dds <- dds[keep,]
 
   # The same thing which follows be calculated by >DESeq(dds) instead of three separate commands
@@ -104,15 +104,15 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   dds<-estimateDispersions(dds)
   dds<-nbinomWaldTest(dds)
 
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,log2counts := log2(normcounts+1)]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
+  count_dt[rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
+  count_dt[normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
+  count_dt[log2counts := log2(normcounts+1)]
+  count_dt[vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
 
   if(paired_samples==TRUE){ # If paired - remove batch effect
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
   }
 
   #count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")

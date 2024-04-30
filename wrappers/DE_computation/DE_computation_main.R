@@ -65,14 +65,14 @@ run_all <- function(args){
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
   
-  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm)
+  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold)
   count_dt <- res_list[[1]]
   txi <- res_list[[2]]
   
   if(!normalize_data_per_comparison){
     #DESeq2 part
     ################
-    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = unique(experiment_design$condition))
+    res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = unique(experiment_design$condition))
     dds <- res_list[[1]]
     count_dt <- res_list[[2]]
     
@@ -100,7 +100,7 @@ run_all <- function(args){
       
       #DESeq2 part
       ################
-      res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
       create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec)
