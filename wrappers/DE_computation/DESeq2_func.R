@@ -104,15 +104,15 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,cond
   dds<-estimateDispersions(dds)
   dds<-nbinomWaldTest(dds)
 
-  count_dt[rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
-  count_dt[normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
-  count_dt[log2counts := log2(normcounts+1)]
-  count_dt[vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
+  count_dt[,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
+  count_dt[,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
+  count_dt[,log2counts := log2(normcounts+1)]
+  count_dt[,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
 
   if(paired_samples==TRUE){ # If paired - remove batch effect
-    count_dt[vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
   }
 
   #count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")

@@ -75,7 +75,7 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
   }
 
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,is_mirna=FALSE,remove_genes_with_mean_read_count_threshold){
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold){
 
   if(analysis_type %!like% "mirbase"){
     feat_type <- "gene"
