@@ -100,6 +100,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     setnames(count_dt,make.names(colnames(count_dt)))
     setnames(count_dt,"mirna","Geneid", skip_absent = T)
     count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
+    count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
+    count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
     count_dt[,sum_count := sum(count),by = Geneid]
     count_dt[,mean_count := mean(count),by = Geneid]
     print(paste0("Total number of genes in the data: ",length(count_dt$Geneid)))
@@ -157,6 +159,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     
     count_dt<-as.data.table(txi$counts,keep.rownames = T)
     setnames(count_dt,"rn","Geneid")
+    count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
+    count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
     count_dt[,sum_count := sum(count),by = Geneid]
     count_dt[,mean_count := mean(count),by = Geneid]
     
@@ -172,10 +176,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     # normMat <- txi$length
     # normMat <- as.data.frame(normMat/exp(rowMeans(log(normMat))))
   }
-  
-  
-  count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
-  count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+
   if(analysis_type %like% "mirbase"){
     count_dt[,`:=`(Feature_name=Geneid, biotype="miRNA")]
   }else{
