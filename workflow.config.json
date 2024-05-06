@@ -107,6 +107,11 @@
         "type": "bool",
         "default": false
       },
+      "remove_genes_with_sum_read_count_threshold": {
+        "label": "Remove genes with sum raw read count bellow.",
+        "type": "int",
+        "default": 0
+      },
       "remove_genes_with_mean_read_count_threshold": {
         "label": "Remove genes with mean raw read count bellow.",
         "type": "int",
