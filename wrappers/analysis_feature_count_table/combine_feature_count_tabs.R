@@ -8,22 +8,31 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample",s
     } else {
       res[,(add_column) := gsub(regex,"\\1",x)]
     }
-    setnames(res,names(res)[sample_column],"counts")
+    setnames(res,names(res)[sample_column],"count")
   }))
 }
 
-run_all <- function(file_list,output_file,is_mirna){
-  if(is_mirna == FALSE){
+run_all <- function(file_list,output_file,type){
+  if(type == "featureCount"){
     res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.featureCount.*.tsv$")
-  }else{
+  }
+  if(type == "mirna"){
     res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.mirbase.*.tsv$",sample_column=2)
+  }
+  if(type == "HTSeqCount"){
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.HTSeqCount.*.tsv$",sample_column=2)
+    setnames(res_tab,"V1","Geneid")
   }
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
-  if(is_mirna == FALSE){
+  if(type == "featureCount"){
     res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
-  }else{
+  }
+  if(type == "mirna"){
     res_tab <- dcast.data.table(res_tab,mirna ~ sample,value.var = "count")
+  }
+  if(type == "HTSeqCount"){
+    res_tab <- dcast.data.table(res_tab,Geneid ~ sample,value.var = "count")
   }
   write.table(res_tab,file = output_file,quote = F,row.names = F,col.names = T,sep = "\t")
 }
