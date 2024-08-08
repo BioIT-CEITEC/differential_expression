@@ -20,7 +20,7 @@ run_all <- function(file_list,output_file,type){
   } else if(type == "HTSeqCount"){
     res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.HTSeqCount.*.tsv$",sample_column=2)
     setnames(res_tab,"V1","Geneid")
-  }
+  } else {print("wrong type parameter")}
   
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
@@ -44,5 +44,5 @@ run_all <- function(file_list,output_file,type){
 args <- commandArgs(trailingOnly = T)
 file_list <- tail(args,-2)
 output_file <- args[1]
-type <- as.logical(toupper(args[2]))
+type <- args[2]
 run_all(file_list,output_file,type)
