@@ -45,5 +45,5 @@ run_all <- function(file_list,output_file,type){
 args <- commandArgs(trailingOnly = T)
 file_list <- tail(args,-2)
 output_file <- args[1]
-is_mirna <- as.logical(toupper(args[2]))
+type <- as.logical(toupper(args[2]))
 run_all(file_list,output_file,type)
