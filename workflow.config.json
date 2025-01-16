@@ -116,7 +116,7 @@
         }
       },
       "normalize_data_per_comparison": {
-        "label": "Normalize read counts to all samples OR per comparison.",
+        "label": "Normalize samples per comparison.",
         "type": "bool",
         "default": false
       },
