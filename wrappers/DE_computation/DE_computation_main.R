@@ -126,7 +126,7 @@ run_all <- function(args){
 
     saveRDS(dds, paste0(output_dir,"/",selected_comparison,"/dds.RDS"))
     saveRDS(count_dt, paste0(output_dir,"/",selected_comparison,"/count_dt.RDS"))
-    saveRDS(edgeR_DGEList, paste0(output_dir,"/",selected_comparison,"/edgeR/edgeR_DGEList.RDS"))
+    saveRDS(edgeR_DGEList, paste0(output_dir,"/",selected_comparison,"/edgeR_DGEList.RDS"))
 
     #DESeq2 part
     ################
