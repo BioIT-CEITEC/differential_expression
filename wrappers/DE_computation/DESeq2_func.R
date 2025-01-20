@@ -424,7 +424,7 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
 get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,condsToCompare,output_dir,p_value_threshold,lfc_threshold){
   #set output dir but remember where to return
   orig_dir <- getwd()
-  dir.create(paste0(output_dir,"/detail_results"),showWarnings = F,recursive = T)
+  dir.create(paste0(output_dir,"/detail_results/report_data"),showWarnings = F,recursive = T)
   setwd(output_dir)
 
   #create copy of dds not to change orig object

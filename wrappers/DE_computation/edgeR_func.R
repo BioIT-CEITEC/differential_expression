@@ -160,7 +160,7 @@ create_normalization_specific_edgeR_results <- function(output_dir,d,count_dt,re
   }
   
   ### Plot expression profiles
-  expcolour <- rep(c(brewer.pal(8, "Dark2"),brewer.pal(8, "Set2"),brewer.pal(8, "Pastel2")),3)
+  expcolour <- rep(c(brewer.pal(8, "Dark2"),brewer.pal(8, "Set2"),brewer.pal(8, "Pastel2")),10)
   pdens <- ggplot(reshape2::melt(logCPM), aes(value, color=Var2)) +
     geom_density() +
     #theme_bw() +
