@@ -101,14 +101,14 @@ run_all <- function(args){
       
       #DESeq2 part
       ################
-      res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- DESeq2_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec)
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
       create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec)
       
       #edgeR part
       ################
-      res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- edgeR_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec)
       edgeR_DGEList <- res_list[[1]]
       fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
       
