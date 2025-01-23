@@ -65,12 +65,13 @@ run_all <- function(args){
   experiment_design <- res_list[[1]]
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
-  
+
   res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_sum_read_count_threshold,remove_genes_with_mean_read_count_threshold)
-  count_dt <- res_list[[1]]
+  count_dt_original <- res_list[[1]]
   txi <- res_list[[2]]
   
   if(!normalize_data_per_comparison){
+    count_dt <- count_dt_original
     #DESeq2 part
     ################
     res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = unique(experiment_design$condition))
@@ -98,17 +99,19 @@ run_all <- function(args){
 
     if(normalize_data_per_comparison){
       comparison_experiment_design <- experiment_design[condition %in% condsToCompare]
-      
+      comparison_experiment_design[,condition := factor(condition,levels = unique(condition))]
+      count_dt <- count_dt_original[condition %in% condsToCompare]
+
       #DESeq2 part
       ################
-      res_list <- DESeq2_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- DESeq2_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
-      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec)
+      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       
       #edgeR part
       ################
-      res_list <- edgeR_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- edgeR_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       edgeR_DGEList <- res_list[[1]]
       fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
       
