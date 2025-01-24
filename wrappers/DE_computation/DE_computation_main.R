@@ -107,7 +107,7 @@ run_all <- function(args){
       res_list <- DESeq2_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
-      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
+      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison,"/detail_results"),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       
       #edgeR part
       ################
@@ -115,7 +115,7 @@ run_all <- function(args){
       edgeR_DGEList <- res_list[[1]]
       fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
       
-      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison),edgeR_DGEList,count_dt)
+      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison,"/edgeR"),edgeR_DGEList,count_dt)
     } else {
       
       #DESeq2 part
