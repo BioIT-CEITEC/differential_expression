@@ -687,13 +687,14 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
   
   #system("for i in heatmap_selected_*; do pdftk $i cat 2-end output tmp.pdf; mv tmp.pdf $i; done") # Cut first empty page from heatmap plot
   tryCatch({
-    if(TOP > 1){
+    if(TOP >= 1){
       # Plot counts for all significant genes
       dds_plot <- dds[,unique(count_dt[condition %in% condsToCompare,]$sample_name)]
       colData(dds_plot)$condition <- factor(colData(dds_plot)$condition,levels = unique(colData(dds_plot)$condition))
       pdf(file="all_sig_genes_normCounts.pdf")
-      for(select_gene_name in comp_res[significant_DE == T]$Feature_name){
-        plotCounts(dds_plot, gene=select_gene_name, intgroup="condition", main=select_gene_name)
+      select_gene_name<-comp_res[significant_DE == T, .(Ensembl_Id,Feature_name)]
+      for(i in 1:length(select_gene_name$Feature_name){
+        plotCounts(dds_plot, gene=select_gene_name$Ensembl_Id[i], intgroup="condition", main=select_gene_name$Feature_name[i])
         mtext(paste0("adj. p-value < ", p_value_threshold, ", logFC >= ", round(lfc_threshold,3)))
         # axis(1, at=seq_along(levels(coldata$condition)), levels(coldata$condition), las=2) # Ugly but works; I am not able to turn off axis() setting in plotCounts function
       }
