@@ -93,7 +93,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
   }
 
-  if(analysis_type %like% "featureCount" | analysis_type %like% "mirbase"){
+  if(analysis_type %like% "featureCount" | analysis_type %like% "HTSeqCount" | analysis_type %like% "mirbase"){
     txi <- NULL
     
     count_dt <- fread(counts_file)
