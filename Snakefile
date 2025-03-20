@@ -108,7 +108,7 @@ biotype_dir_list = config['biotypes'].split(",")
 config["analysis_type"] = "|".join(analysis)
 config["biotype_list"] = "|".join(biotype_dir_list)
 config["comparison"] = "|".join(comparison_dir_list)
-config['count_over'] = config['count_over'].replace(",","|")
+count_over = config['count_over'].split(",")
 
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",

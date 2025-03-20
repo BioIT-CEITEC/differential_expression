@@ -32,7 +32,7 @@ rule creat_RSEM_table:
 
 rule creat_featureCount_tables:
     input:  feature_count = expand("qc_reports/{sample}/featureCount_{count_over}/{sample}.featureCount_{count_over}.tsv",sample=sample_tab.sample_name,count_over=count_over)
-    output: table = "DE_featureCount_exon/complete_featureCount_{count_over}_table.tsv",
+    output: table = "DE_featureCount_{count_over}/complete_featureCount_{count_over}_table.tsv",
     params: type="featureCount",
     log:    "logs/DE/create_featureCount_{count_over}_table.log"
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
@@ -40,7 +40,7 @@ rule creat_featureCount_tables:
 
 rule creat_HTSeqCount_tables:
     input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_{count_over}/{sample}.HTSeqCount_{count_over}.tsv",sample=sample_tab.sample_name,count_over=count_over)
-    output: table = "DE_HTSeqCount_exon/complete_HTSeqCountt_{count_over}_table.tsv",
+    output: table = "DE_HTSeqCount_{count_over}/complete_HTSeqCount_{count_over}_table.tsv",
     params: type="HTSeqCount",
     log:    "logs/DE/create_HTSeqCount_{count_over}_table.log"
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
