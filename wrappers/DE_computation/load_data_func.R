@@ -1,3 +1,5 @@
+`%!in%` <- Negate(`%in%`)
+`%!like%` <- Negate(`%like%`)
 
 read_and_prepare_design_data <- function(comparison_vec,experiment_design_file,paired_samples,use_custom_batch_effect_grouping){
   experiment_design <- fread(experiment_design_file)
@@ -73,29 +75,43 @@ filterGTF <- function(TSV, geneList = "all", keepGene = TRUE, chrmList = "all", 
   }
 
 
-read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold){
-  
-  feat_type <- "gene"
-  annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")
-  gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
-  setnames(gtf_gene_tab,c("Geneid","Chr","Gene_name","biotype"))
-  gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]       
-  gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
-  gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
-  gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
-  gtf_gene_tab[,duplicated := NULL]
-  setnames(gtf_gene_tab,"Gene_name","Feature_name")
-  setkey(gtf_gene_tab,"Geneid")
+read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_sum_read_count_threshold,remove_genes_with_mean_read_count_threshold){
 
-  gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
+  if(analysis_type %!like% "mirbase"){
+    feat_type <- "gene"
+    annotate_by<- c("gene_id","seqnames","gene_name", "gene_biotype")
+    gtf_gene_tab <- as.data.table(rtracklayer::import(gtf_filename, feature.type = feat_type))[,annotate_by, with=F]
+    setnames(gtf_gene_tab,c("Geneid","Chr","Gene_name","biotype"))
+    gtf_gene_tab <- gtf_gene_tab[!is.na(biotype)]
+    gtf_gene_tab[is.na(Gene_name) | Gene_name == "",Gene_name := Geneid]
+    gtf_gene_tab[,duplicated := .N,by = "Gene_name"]
+    gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
+    gtf_gene_tab[,duplicated := NULL]
+    setnames(gtf_gene_tab,"Gene_name","Feature_name")
+    gtf_gene_tab<-gtf_gene_tab[!duplicated(Geneid),] # remove duplicated Geneid which can happen when gtf not from ensembl
+    setkey(gtf_gene_tab,"Geneid")
 
-  if(analysis_type %like% "featureCount"){
+    gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
+  }
+
+  if(analysis_type %like% "featureCount" | analysis_type %like% "mirbase"){
     txi <- NULL
     
     count_dt <- fread(counts_file)
     setnames(count_dt,make.names(colnames(count_dt)))
+    setnames(count_dt,"mirna","Geneid", skip_absent = T)
     count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
-    
+    count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
+    count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+    count_dt[,sum_count := sum(count),by = Geneid]
+    count_dt[,mean_count := mean(count),by = Geneid]
+    print(paste0("Total number of genes in the data: ",length(count_dt$Geneid)))
+    filterM <- length(count_dt[mean_count > remove_genes_with_mean_read_count_threshold,]$Geneid)
+    count_dt <- count_dt[mean_count > remove_genes_with_mean_read_count_threshold,]
+    print(paste0("Total number of genes after RowMeans filtering: ",filterM," - mean cut-off ",remove_genes_with_mean_read_count_threshold))
+    filterS <- length(count_dt[sum_count > remove_genes_with_sum_read_count_threshold,]$Geneid)
+    count_dt <- count_dt[sum_count > remove_genes_with_sum_read_count_threshold,]
+    print(paste0("Total number of genes after RowSums filtering: ",filterS," - sum cut-off ",remove_genes_with_sum_read_count_threshold))
     
   } else {
     load(counts_file)
@@ -115,11 +131,28 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     # Keep only non-zero expressed genes that are in ensembl DB
     #   If gene/isoform has only counts 0.x it will be kept in the output but will have 0 counts in final DE tables
     keep<-rowSums(txi$counts)>0 & rownames(txi$counts) %in% gtf_gene_tab$Geneid
-    
+    print(paste0("Total number of genes in the data: ",length(keep)))
+
     txi$abundance<-txi$abundance[keep,]
     txi$counts<-txi$counts[keep,]
     txi$length<-txi$length[keep,]
-    
+
+    # filter for low counts per mean of counts
+    filterM<-rowMeans(txi$counts)>remove_genes_with_mean_read_count_threshold & rownames(txi$counts) %in% gtf_gene_tab$Geneid
+    print(paste0("Total number of genes after RowMeans filtering: ",length(filterM)," - mean cut-off ",remove_genes_with_mean_read_count_threshold))
+
+    txi$abundance<-txi$abundance[filterM,]
+    txi$counts<-txi$counts[filterM,]
+    txi$length<-txi$length[filterM,]
+
+    # filter for low counts per sum of counts
+    filterS<-rowSums(txi$counts)>remove_genes_with_sum_read_count_threshold & rownames(txi$counts) %in% gtf_gene_tab$Geneid
+    print(paste0("Total number of genes after RowSums filtering: ",length(filterS)," - sum cut-off ",remove_genes_with_sum_read_count_threshold))
+
+    txi$abundance<-txi$abundance[filterS,]
+    txi$counts<-txi$counts[filterS,]
+    txi$length<-txi$length[filterS,]
+
     #set correct col order
     txi$counts<-txi$counts[,match(experiment_design$sample_name, colnames(txi$counts))]
     txi$abundance<-txi$abundance[,match(experiment_design$sample_name, colnames(txi$abundance))]
@@ -127,6 +160,10 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     
     count_dt<-as.data.table(txi$counts,keep.rownames = T)
     setnames(count_dt,"rn","Geneid")
+    count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
+    count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+    count_dt[,sum_count := sum(count),by = Geneid]
+    count_dt[,mean_count := mean(count),by = Geneid]
     
     #rename to Gene names from Ensembl
     # rownames(txi$abundance) <- gtf_gene_tab[rownames(txi$abundance)]$Feature_name
@@ -140,15 +177,13 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     # normMat <- txi$length
     # normMat <- as.data.frame(normMat/exp(rowMeans(log(normMat))))
   }
-  
-  
-  count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
-  count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
-  count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
+
+  if(analysis_type %like% "mirbase"){
+    count_dt[,`:=`(Feature_name=Geneid, biotype="miRNA")]
+  }else{
+    count_dt <- merge(gtf_gene_tab,count_dt,by = "Geneid")
+  }
   setnames(count_dt,"Geneid","Ensembl_Id")
-  count_dt[,sum_count := sum(count),by = Feature_name]
-  count_dt[,mean_count := mean(count),by = Feature_name]
-  count_dt <- count_dt[sum_count > 0,]
   count_dt <- merge(experiment_design[,.(sample_name, condition, patient)],count_dt,by = "sample_name")
   setcolorder(count_dt,c("Ensembl_Id","Feature_name","biotype","sample_name","condition","patient","count","sum_count","mean_count"))
   setkey(count_dt,Ensembl_Id,condition,patient,sample_name)

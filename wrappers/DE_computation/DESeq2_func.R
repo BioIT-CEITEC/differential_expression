@@ -65,7 +65,7 @@ prepare_colors_and_shapes <- function(experiment_design){
 }
 
 
-DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec){
+DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,condition_to_compare_vec){
 
   paired_samples <- length(unique(experiment_design$patient)) != nrow(experiment_design)
 
@@ -96,7 +96,7 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   }
 
   # Remove very low count genes
-  keep <- rowMeans(counts(dds)) >= remove_genes_with_mean_read_count_threshold
+  keep <- rowSums(counts(dds)) >= 0
   dds <- dds[keep,]
 
   # The same thing which follows be calculated by >DESeq(dds) instead of three separate commands
@@ -104,15 +104,15 @@ DESeq2_computation <- function(txi = NULL,count_dt = NULL,experiment_design,remo
   dds<-estimateDispersions(dds)
   dds<-nbinomWaldTest(dds)
 
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,log2counts := log2(normcounts+1)]
-  count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
+  count_dt[,rawcounts := as.vector(t(counts(dds, normalized=FALSE)))]
+  count_dt[,normcounts := as.vector(t(counts(dds, normalized=TRUE)))]
+  count_dt[,log2counts := log2(normcounts+1)]
+  count_dt[,vstcounts := as.vector(t(assay(DESeq2::varianceStabilizingTransformation(dds))))]
 
   if(paired_samples==TRUE){ # If paired - remove batch effect
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
-    count_dt[mean_count >= remove_genes_with_mean_read_count_threshold,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,vstcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"vstcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,rawcounts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"rawcounts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
+    count_dt[,log2counts_batch := as.vector(t(limma::removeBatchEffect(count_matrix_from_dt(count_dt,"log2counts",condition_to_compare_vec = condition_to_compare_vec), dds$patient)))]
   }
 
   #count_dt <- merge(experiment_design[,.(sample_name,condition,patient)],count_dt,by = "sample_name")
@@ -424,18 +424,26 @@ create_normalization_specific_DESeq2_results <- function(output_dir,dds,count_dt
 get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,condsToCompare,output_dir,p_value_threshold,lfc_threshold){
   #set output dir but remember where to return
   orig_dir <- getwd()
-  dir.create(paste0(output_dir,"/detail_results"),showWarnings = F,recursive = T)
+  dir.create(paste0(output_dir,"/detail_results/report_data"),showWarnings = F,recursive = T)
   setwd(output_dir)
 
   #create copy of dds not to change orig object
   dds <- copy(dds)
 
   deseq_obj_comp_res <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=T)
-  deseq_obj_comp_res <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), res=deseq_obj_comp_res, type="normal", lfcThreshold=0)
   comp_res <- as.data.table(deseq_obj_comp_res,keep.rownames=T)
+  setnames(comp_res, c("log2FoldChange","lfcSE"), paste0(c("log2FoldChange","lfcSE"),"_notshrink"))
+  # lfcshrink
+  deseq_obj_comp_res <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), res=deseq_obj_comp_res, type="normal", lfcThreshold=0)
+  comp_res <- merge(as.data.table(deseq_obj_comp_res,keep.rownames=T), comp_res[,.(rn, log2FoldChange_notshrink,lfcSE_notshrink)], by = "rn")
+  # no filtering
   deseq_obj_comp_res_no_filt <- results(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), independentFiltering=F, cooksCutoff=F)
+  comp_res_no_filt <- as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)
+  setnames(comp_res_no_filt, c("log2FoldChange","lfcSE"), paste0("no_filter_",c("log2FoldChange","lfcSE"),"_notshrink"))
+  # lfcshrink
   deseq_obj_comp_res_no_filt <- lfcShrink(dds, contrast=c("condition", condsToCompare[1], condsToCompare[2]), type="normal", lfcThreshold=0,res = deseq_obj_comp_res_no_filt)
-  comp_res <- merge(comp_res,as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)],by = "rn")
+  comp_res_no_filt <- merge(as.data.table(deseq_obj_comp_res_no_filt,keep.rownames=T)[,.(rn,no_filter_log2FoldChange = log2FoldChange,no_filter_pvalue = pvalue,no_filter_padj = padj)], comp_res_no_filt[,.(rn, no_filter_log2FoldChange_notshrink,no_filter_lfcSE_notshrink)],by = "rn")
+  comp_res <- merge(comp_res, comp_res_no_filt, by="rn")
   comp_res[,abs_log2FoldChange := abs(log2FoldChange)]
   comp_res[,abs_no_filter_log2FoldChange := abs(no_filter_log2FoldChange)]
   setnames(comp_res,"rn","Ensembl_Id")
@@ -479,7 +487,7 @@ get_comparison_specific_DESeq2_table <- function(dds,count_dt,experiment_design,
   # comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","abs_log2FoldChange")),with = F]
   setcolorder(comp_res,c("Ensembl_Id","baseMean","log2FoldChange","lfcSE","pvalue","padj","significant_DE","Feature_name","biotype"))
   setorder(comp_res,padj,pvalue,-abs_log2FoldChange,na.last = T)
-  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange","abs_no_filter_log2FoldChange")),with = F], file = "DESeq2.tsv", sep = "\t")
+  fwrite(comp_res[,setdiff(names(comp_res),c("no_filter_log2FoldChange","no_filter_pvalue","no_filter_padj","no_filter_significant_DE","abs_log2FoldChange","abs_no_filter_log2FoldChange","no_filter_log2FoldChange_notshrink","no_filter_lfcSE_notshrink","lfcSE_notshrink")),with = F], file = "DESeq2.tsv", sep = "\t")
   fwrite(comp_res, file = "detail_results/full_DESeq2.tsv", sep = "\t")
 
   setwd(orig_dir)
@@ -679,13 +687,14 @@ create_comparison_specific_DESeq2_results <- function(comp_res,dds,count_dt,cond
   
   #system("for i in heatmap_selected_*; do pdftk $i cat 2-end output tmp.pdf; mv tmp.pdf $i; done") # Cut first empty page from heatmap plot
   tryCatch({
-    if(TOP > 1){
+    if(TOP >= 1){
       # Plot counts for all significant genes
       dds_plot <- dds[,unique(count_dt[condition %in% condsToCompare,]$sample_name)]
       colData(dds_plot)$condition <- factor(colData(dds_plot)$condition,levels = unique(colData(dds_plot)$condition))
       pdf(file="all_sig_genes_normCounts.pdf")
-      for(select_gene_name in comp_res[significant_DE == T]$Feature_name){
-        plotCounts(dds_plot, gene=select_gene_name, intgroup="condition", main=select_gene_name)
+      select_gene_name<-comp_res[significant_DE == T, .(Ensembl_Id,Feature_name)]
+      for(i in 1:length(select_gene_name$Feature_name)){
+        plotCounts(dds_plot, gene=select_gene_name$Ensembl_Id[i], intgroup="condition", main=select_gene_name$Feature_name[i])
         mtext(paste0("adj. p-value < ", p_value_threshold, ", logFC >= ", round(lfc_threshold,3)))
         # axis(1, at=seq_along(levels(coldata$condition)), levels(coldata$condition), las=2) # Ugly but works; I am not able to turn off axis() setting in plotCounts function
       }

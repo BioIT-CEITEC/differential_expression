@@ -1,35 +1,28 @@
-import os
 import pandas as pd
 import json
 from snakemake.utils import min_version
-import re
 
 min_version("5.18.0")
 
 configfile: "config.json"
-GLOBAL_REF_PATH = config["globalResources"]
 
-# setting organism from reference
-f = open(os.path.join(GLOBAL_REF_PATH,"reference_info","reference2.json"),)
-reference_dict = json.load(f)
-f.close()
-config["species_name"] = [organism_name for organism_name in reference_dict.keys() if isinstance(reference_dict[organism_name],dict) and config["reference"] in reference_dict[organism_name].keys()][0]
-config["organism"] = config["species_name"].split(" (")[0].lower().replace(" ","_")
-if len(config["species_name"].split(" (")) > 1:
-    config["species"] = config["species_name"].split(" (")[1].replace(")","")
+GLOBAL_REF_PATH = config["globalResources"]
+GLOBAL_TMPD_PATH = config["globalTmpdPath"]
+
+os.makedirs(GLOBAL_TMPD_PATH, exist_ok=True)
+
+##### BioRoot utilities #####
+module BR:
+    snakefile: github("BioIT-CEITEC/bioroots_utilities", path="bioroots_utilities.smk",branch="master")
+    config: config
+
+use rule * from BR as other_*
 
 ##### Config processing #####
-# Folders
-#
-reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["reference"])
 
-# Samples
-#
-sample_tab = pd.DataFrame.from_dict(config["samples"],orient="index")
+sample_tab = BR.load_sample()
 
-if (sample_tab.condition == "").all():
-    raise ValueError("There are no conditions set for samples!")
-
+config = BR.load_organism()
 
 def get_comparison_dir_list(condition_list):
     comparison_dir_list = list()
@@ -87,6 +80,8 @@ if config["salmon_map"]:
     analysis.append("salmon_map")
 if config["kallisto"]:
     analysis.append("kallisto")
+if config["is_mirna"]:
+    analysis.append("mirbase_canonical")
 if len(analysis) == 0:
     raise ValueError("There was no RSEM or featureCount used in previous analysis!")
 
@@ -97,35 +92,10 @@ config["analysis_type"] = "|".join(analysis)
 config["biotype_list"] = "|".join(biotype_dir_list)
 config["comparison"] = "|".join(comparison_dir_list)
 
-#set analysis selected analysis types from config and rise exception if no selected
-# selected_analysis_types = []
-# if config["featureCount_exon"]:
-#     selected_analysis_types.append("featureCount_exon")
-# if config["featureCount_gene"]:
-#     selected_analysis_types.append("featureCount_gene")
-# if config["featureCount_transcript"]:
-#     selected_analysis_types.append("featureCount_transcript")
-# if config["featureCount_3pUTR"]:
-#     selected_analysis_types.append("featureCount_3pUTR")
-# if config["featureCount_5pUTR"]:
-#     selected_analysis_types.append("featureCount_5pUTR")
-# if config["RSEM"]:
-#     selected_analysis_types.append("RSEM")
-# if config["salmon_map"]:
-#     selected_analysis_types.append("salmon_map")
-# if config["salmon_align"]:
-#     selected_analysis_types.append("salmon_align")
-# if config["kallisto"]:
-#     selected_analysis_types.append("kallisto")
-#
-# if len(selected_analysis_types) == 0:
-#     raise ValueError("There was no RSEM or featureCount used in previous analysis!")
-
-
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical",
      #data_type= "tsv|RData"
 
 os.makedirs("DE_report",exist_ok=True)
@@ -156,6 +126,8 @@ def input_all(wildcards):
         input["salmon_align"] = "DE_salmon_align/final_report.html"
     if config["kallisto"]:
         input["kallisto"] = "DE_kallisto/final_report.html"
+    if config["is_mirna"]:
+        input["mirbase"] = "DE_mirbase_canonical/final_report.html"
     return input
 
 rule all:

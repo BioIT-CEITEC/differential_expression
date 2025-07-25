@@ -45,6 +45,7 @@ comparison_specific_edgeR_DESeq2_overlap <- function(output_dir,comp_res,edgeR_c
                                                          round(lfc_threshold, 2), " and adj.pval ", p_value_threshold, sep=""))
   dev.off()
   if(!is.null(dev.list())) {dev.off()}
+
   if(upsetTableR[,sum(DESeq2_up,DESeq2_down,DESeq2_no_filter_up,DESeq2_no_filter_down,edgeR_up,edgeR_down)]>0){
     png(file="overlap_DESeq2_edgeR_upsetR.png",width = 7,height = 7,units="in",res=300)
     print(UpSetR::upset(upsetTableR,

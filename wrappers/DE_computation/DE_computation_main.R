@@ -51,11 +51,12 @@ run_all <- function(args){
   p_value_threshold <- as.numeric(args[9])
   lfc_threshold <- log(as.numeric(args[10]),2)
   TOP <- as.integer(args[11])
-  remove_genes_with_mean_read_count_threshold <- as.integer(args[12])
-  geneList <- args[13]
-  keepGene <- as.logical(toupper(args[14]))
-  chrmList <- args[15]
-  keepChrm <- as.logical(toupper(args[16]))
+  remove_genes_with_sum_read_count_threshold <- as.integer(args[12])
+  remove_genes_with_mean_read_count_threshold <- as.integer(args[13])
+  geneList <- args[14]
+  keepGene <- as.logical(toupper(args[15]))
+  chrmList <- args[16]
+  keepChrm <- as.logical(toupper(args[17]))
   INTERCEPT<-TRUE
   
   output_dir <- paste0(getwd(),"/",relative_output_dir)
@@ -64,15 +65,16 @@ run_all <- function(args){
   experiment_design <- res_list[[1]]
   comparison_vec <- res_list[[2]]
   condition_to_compare_vec <- res_list[[3]]
-  
-  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_mean_read_count_threshold)
-  count_dt <- res_list[[1]]
+
+  res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_sum_read_count_threshold,remove_genes_with_mean_read_count_threshold)
+  count_dt_original <- res_list[[1]]
   txi <- res_list[[2]]
   
   if(!normalize_data_per_comparison){
+    count_dt <- count_dt_original
     #DESeq2 part
     ################
-    res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = unique(experiment_design$condition))
+    res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = unique(experiment_design$condition))
     dds <- res_list[[1]]
     count_dt <- res_list[[2]]
     
@@ -97,21 +99,23 @@ run_all <- function(args){
 
     if(normalize_data_per_comparison){
       comparison_experiment_design <- experiment_design[condition %in% condsToCompare]
-      
+      comparison_experiment_design[,condition := factor(condition,levels = unique(condition))]
+      count_dt <- count_dt_original[condition %in% condsToCompare]
+
       #DESeq2 part
       ################
-      res_list <- DESeq2_computation(txi,count_dt,experiment_design,remove_genes_with_mean_read_count_threshold,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- DESeq2_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       dds <- res_list[[1]]
       count_dt <- res_list[[2]]
-      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec)
+      create_normalization_specific_DESeq2_results(paste0(output_dir,"/",selected_comparison,"/detail_results"),dds,count_dt[condition %in% condsToCompare],condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       
       #edgeR part
       ################
-      res_list <- edgeR_computation(txi,count_dt,experiment_design,condition_to_compare_vec = condition_to_compare_vec)
+      res_list <- edgeR_computation(txi,count_dt,comparison_experiment_design,condition_to_compare_vec = condition_to_compare_vec[condition_to_compare_vec %in% condsToCompare])
       edgeR_DGEList <- res_list[[1]]
       fit_tagwise_dispersion_DGEGLM <- res_list[[2]]
       
-      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison),edgeR_DGEList,count_dt)
+      create_normalization_specific_edgeR_results(paste0(output_dir,"/",selected_comparison,"/edgeR"),edgeR_DGEList,count_dt)
     } else {
       
       #DESeq2 part
@@ -125,7 +129,7 @@ run_all <- function(args){
 
     saveRDS(dds, paste0(output_dir,"/",selected_comparison,"/dds.RDS"))
     saveRDS(count_dt, paste0(output_dir,"/",selected_comparison,"/count_dt.RDS"))
-    saveRDS(edgeR_DGEList, paste0(output_dir,"/",selected_comparison,"/edgeR/edgeR_DGEList.RDS"))
+    saveRDS(edgeR_DGEList, paste0(output_dir,"/",selected_comparison,"/edgeR_DGEList.RDS"))
 
     #DESeq2 part
     ################
@@ -149,7 +153,7 @@ run_all <- function(args){
 
 # develop and test 2
 # setwd("/mnt/ssd/ssd_1/workspace/vojta/6303__differential_expression__DE_analysis_refactor__220929")
-# args <- c("DE_feature_count_orig/DE_experiment_design.tsv","DE_feature_count_orig/complete_feature_count_table.tsv","CAF_vs_CTRL,NF_O_vs_CTRL,CAF_vs_NF_O","/mnt/ssd/ssd_3/references/homo_sapiens/GRCh38-p10/annot/GRCh38-p10.gtf","feature_count","True","False","False","0.05","2","20","0","")
+# args <- c("DE_featureCount_exon/DE_experiment_design.tsv","DE_featureCount_exon/complete_featureCount_exon_table.tsv","IGM87_vs_NT87,IGM82_vs_NT82,NT82_vs_NT87,IGM82_vs_IGM87","/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/resources/references/homo_sapiens/GRCh38/annot/r110/GRCh38.gtf","featureCount_exon","True","False","False","0.05","2","20","10","0","all","True","all","True","")
 # script.dir <- "wrappers/DE_computation/"
 
 script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))

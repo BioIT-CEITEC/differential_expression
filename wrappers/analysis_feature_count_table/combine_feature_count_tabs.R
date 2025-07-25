@@ -1,6 +1,6 @@
 library(data.table)
 
-fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
+fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample",sample_column=7){
   rbindlist(lapply(file_list,function(x){
     res <- fread(x)
     if(is.null(regex)){
@@ -8,15 +8,31 @@ fread_vector_of_files <- function(file_list,regex = NULL,add_column = "sample"){
     } else {
       res[,(add_column) := gsub(regex,"\\1",x)]
     }
-    setnames(res,names(res)[7],"counts")
+    setnames(res,names(res)[sample_column],"count")
   }))
 }
 
-run_all <- function(file_list,output_file){
-  res_tab <- fread_vector_of_files(file_list,".*\\/(.*)\\.featureCount.*.tsv$")
+run_all <- function(file_list,output_file,type){
+  if(type == "featureCount"){
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.featureCount.*.tsv$")
+  } else if(type == "mirna"){
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.mirbase.*.tsv$",sample_column=2)
+  } else if(type == "HTSeqCount"){
+    res_tab <- fread_vector_of_files(file_list,regex=".*\\/(.*)\\.HTSeqCount.*.tsv$",sample_column=2)
+    setnames(res_tab,"V1","Geneid")
+  } else {print("wrong type parameter")}
+  
   res_tab[,sample := make.names(sample)]
   setnames(res_tab,tail(names(res_tab),2)[1],"count")
-  res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
+  
+  if(type == "featureCount"){
+    res_tab <- dcast.data.table(res_tab,Geneid + Chr + Start + End + Strand + Length ~ sample,value.var = "count")
+  } else if(type == "mirna"){
+    res_tab <- dcast.data.table(res_tab,mirna ~ sample,value.var = "count")
+  } else if(type == "HTSeqCount"){
+    res_tab <- dcast.data.table(res_tab,Geneid ~ sample,value.var = "count")
+  }
+    
   write.table(res_tab,file = output_file,quote = F,row.names = F,col.names = T,sep = "\t")
 }
 
@@ -26,6 +42,7 @@ run_all <- function(file_list,output_file){
 
 # run as Rscript
 args <- commandArgs(trailingOnly = T)
-file_list <- tail(args,-1)
+file_list <- tail(args,-2)
 output_file <- args[1]
-run_all(file_list,output_file)
+type <- args[2]
+run_all(file_list,output_file,type)
