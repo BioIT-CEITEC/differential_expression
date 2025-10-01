@@ -102,12 +102,16 @@ run_all <- function(args){
       comparison_experiment_design <- experiment_design[condition %in% condsToCompare]
       comparison_experiment_design[,condition := factor(condition,levels = unique(condition))]
       count_dt <- count_dt_original[condition %in% condsToCompare]
-      txi <- list(
-        abundance = txi_original$abundance[, colnames(txi_original$abundance) %in% comparison_experiment_design$sample_name],
-        counts = txi_original$counts[, colnames(txi_original$counts) %in% comparison_experiment_design$sample_name],
-        length = txi_original$length[, colnames(txi_original$length) %in% comparison_experiment_design$sample_name],
-        countsFromAbundance = txi_original$countsFromAbundance
-      )
+      if(!is.null(txi_original)){
+        txi <- list(
+          abundance = txi_original$abundance[, colnames(txi_original$abundance) %in% comparison_experiment_design$sample_name],
+          counts = txi_original$counts[, colnames(txi_original$counts) %in% comparison_experiment_design$sample_name],
+          length = txi_original$length[, colnames(txi_original$length) %in% comparison_experiment_design$sample_name],
+          countsFromAbundance = txi_original$countsFromAbundance
+        )
+      }else{
+        txi<-NULL
+      }
 
       #DESeq2 part
       ################
