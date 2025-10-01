@@ -106,7 +106,7 @@ run_all <- function(args){
         abundance = txi_original$abundance[, colnames(txi_original$abundance) %in% comparison_experiment_design$sample_name],
         counts = txi_original$counts[, colnames(txi_original$counts) %in% comparison_experiment_design$sample_name],
         length = txi_original$length[, colnames(txi_original$length) %in% comparison_experiment_design$sample_name],
-        countsFromAbundance = txi$countsFromAbundance
+        countsFromAbundance = txi_original$countsFromAbundance
       )
 
       #DESeq2 part
