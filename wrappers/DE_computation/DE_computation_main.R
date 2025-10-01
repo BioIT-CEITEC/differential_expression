@@ -68,10 +68,11 @@ run_all <- function(args){
 
   res_list <- read_and_prepare_count_data(counts_file,experiment_design,gtf_filename,analysis_type,geneList,keepGene,chrmList,keepChrm,remove_genes_with_sum_read_count_threshold,remove_genes_with_mean_read_count_threshold)
   count_dt_original <- res_list[[1]]
-  txi <- res_list[[2]]
+  txi_original <- res_list[[2]]
   
   if(!normalize_data_per_comparison){
     count_dt <- count_dt_original
+    txi <- txi_original
     #DESeq2 part
     ################
     res_list <- DESeq2_computation(txi,count_dt,experiment_design,condition_to_compare_vec = unique(experiment_design$condition))
@@ -101,6 +102,12 @@ run_all <- function(args){
       comparison_experiment_design <- experiment_design[condition %in% condsToCompare]
       comparison_experiment_design[,condition := factor(condition,levels = unique(condition))]
       count_dt <- count_dt_original[condition %in% condsToCompare]
+      txi <- list(
+        abundance = txi_original$abundance[, colnames(txi_original$abundance) %in% comparison_experiment_design$sample_name],
+        counts = txi_original$counts[, colnames(txi_original$counts) %in% comparison_experiment_design$sample_name],
+        length = txi_original$length[, colnames(txi_original$length) %in% comparison_experiment_design$sample_name],
+        countsFromAbundance = txi$countsFromAbundance
+      )
 
       #DESeq2 part
       ################
