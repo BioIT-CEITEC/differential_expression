@@ -286,10 +286,10 @@ create_comparison_specific_edgeR_results <- function(edgeR_comp_res,lrt_tgw,cond
 
   sink("detail_results/edgeR_de_genes_summary.txt")
   print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " Without LogFC Cut-off", sep=""))
-  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=p_value_threshold)
+  dt<-decideTests(lrt_tgw, adjust.method="BH", p.value=p_value_threshold)
   summary(dt)
   print(paste("Number of DE Genes With adj.pval < ", p_value_threshold, " and LogFC >= ", round(lfc_threshold, 2), sep=""))
-  dt<-decideTestsDGE(lrt_tgw, adjust.method="BH", p.value=p_value_threshold, lfc=lfc_threshold)
+  dt<-decideTests(lrt_tgw, adjust.method="BH", p.value=p_value_threshold, lfc=lfc_threshold)
   summary(dt)
   sink()
   
