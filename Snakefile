@@ -95,7 +95,7 @@ config["comparison"] = "|".join(comparison_dir_list)
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTR|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical",
      #data_type= "tsv|RData"
 
 os.makedirs("DE_report",exist_ok=True)
