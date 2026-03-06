@@ -70,6 +70,46 @@ rule creat_featureCount_5pUTR_table:
     conda:  "../wrappers/analysis_feature_count_table/env.yaml"
     script: "../wrappers/analysis_feature_count_table/script.py"
 
+rule creat_HTSeqCount_exon_table:
+    input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_exon/{sample}.HTSeqCount_exon.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_HTSeqCount_exon/complete_HTSeqCount_exon_table.tsv",
+    params: type="HTSeqCount",
+    log:    "logs/DE/create_HTSeqCount_exon_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_HTSeqCount_gene_table:
+    input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_gene/{sample}.HTSeqCount_gene.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_HTSeqCount_gene/complete_HTSeqCount_gene_table.tsv",
+    params: type="HTSeqCount",
+    log:    "logs/DE/create_HTSeqCount_gene_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_HTSeqCount_transcript_table:
+    input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_transcript/{sample}.HTSeqCount_transcript.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_HTSeqCount_transcript/complete_HTSeqCount_transcript_table.tsv",
+    params: type="HTSeqCount"
+    log:    "logs/DE/create_HTSeqCount_transcript_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_HTSeqCount_3pUTR_table:
+    input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_3pUTR/{sample}.HTSeqCount_3pUTR.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_HTSeqCount_3pUTR/complete_HTSeqCount_3pUTR_table.tsv",
+    params: type="HTSeqCount"
+    log:    "logs/DE/create_HTSeqCount_3pUTR_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
+rule creat_HTSeqCount_5pUTR_table:
+    input:  feature_count = expand("qc_reports/{sample}/HTSeqCount_5pUTR/{sample}.HTSeqCount_5pUTR.tsv",sample=sample_tab.sample_name)
+    output: table = "DE_HTSeqCount_5pUTR/complete_HTSeqCount_5pUTR_table.tsv",
+    params: type="HTSeqCount"
+    log:    "logs/DE/create_HTSeqCount_5pUTR_table.log"
+    conda:  "../wrappers/analysis_feature_count_table/env.yaml"
+    script: "../wrappers/analysis_feature_count_table/script.py"
+
 rule creat_mirbase_canonical_table:
     input:  feature_count = expand("qc_reports/{sample}/mirbase_canonical/{sample}.mirbase_canonical.tsv",sample=sample_tab.sample_name)
     output: table = "DE_mirbase_canonical/complete_mirbase_canonical_table.tsv",
@@ -79,7 +119,7 @@ rule creat_mirbase_canonical_table:
     script: "../wrappers/analysis_feature_count_table/script.py"
 
 def count_tab_input(wildcards):
-    if wildcards.analysis_type.split("_")[0] == "featureCount" or wildcards.analysis_type.split("_")[0] == "mirbase":
+    if wildcards.analysis_type.split("_")[0] == "featureCount" or wildcards.analysis_type.split("_")[0] == "HTSeqCount" or wildcards.analysis_type.split("_")[0] == "mirbase":
         suffix = "tsv"
     else:
         suffix = "RData"
