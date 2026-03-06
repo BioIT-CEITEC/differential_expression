@@ -103,6 +103,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
     count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
     count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+    # counts from HTSeq could be numeric with decimals, but we want to keep them as integers for DESeq2, so we round them here
+    count_dt[,count := as.integer(round(count))]
     count_dt[,sum_count := sum(count),by = Geneid]
     count_dt[,mean_count := mean(count),by = Geneid]
     print(paste0("Total number of genes in the data: ",length(count_dt$Geneid)))
