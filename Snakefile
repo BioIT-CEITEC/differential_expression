@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 from snakemake.utils import min_version
 
 min_version("5.18.0")
@@ -137,6 +138,16 @@ def input_all(wildcards):
         input["featureCount_3pUTR"] = "DE_featureCount_3pUTR/final_report.html"
     if config["featureCount_5pUTR"]:
         input["featureCount_5pUTR"] = "DE_featureCount_5pUTR/final_report.html"
+    if config["HTSeqCount_exon"]:
+        input["HTSeqCount_exon"] = "DE_HTSeqCount_exon/final_report.html"
+    if config["HTSeqCount_gene"]:
+        input["HTSeqCount_gene"] = "DE_HTSeqCount_gene/final_report.html"
+    if config["HTSeqCount_transcript"]:
+        input["HTSeqCount_transcript"] = "DE_HTSeqCount_transcript/final_report.html"
+    if config["HTSeqCount_3pUTR"]:
+        input["HTSeqCount_3pUTR"] = "DE_HTSeqCount_3pUTR/final_report.html"
+    if config["HTSeqCount_5pUTR"]:
+        input["HTSeqCount_5pUTR"] = "DE_HTSeqCount_5pUTR/final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "DE_RSEM/final_report.html"
     if config["salmon_map"]:

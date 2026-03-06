@@ -88,6 +88,7 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
     gtf_gene_tab[,duplicated := NULL]
     setnames(gtf_gene_tab,"Gene_name","Feature_name")
+    gtf_gene_tab<-gtf_gene_tab[!duplicated(Geneid),] # remove duplicated Geneid which can happen when gtf not from ensembl
     setkey(gtf_gene_tab,"Geneid")
 
     gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
