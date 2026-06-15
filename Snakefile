@@ -114,7 +114,7 @@ count_over = config['count_over'].split(",")
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical|HTSeqCount_exon|HTSeqCount_gene|HTSeqCount_transcript|HTSeqCount_3pUTRn|HTSeqCount_5pUTR",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTR|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical|HTSeqCount_exon|HTSeqCount_gene|HTSeqCount_transcript|HTSeqCount_3pUTR|HTSeqCount_5pUTR",
      count_over="gene|exon|transcript|three_prime_UTR|five_prime_UTR"
      #data_type= "tsv|RData"
 
