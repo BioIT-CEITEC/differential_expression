@@ -88,12 +88,13 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     gtf_gene_tab[duplicated > 1,Gene_name := paste0(Gene_name,"__",Geneid)]
     gtf_gene_tab[,duplicated := NULL]
     setnames(gtf_gene_tab,"Gene_name","Feature_name")
+    gtf_gene_tab<-gtf_gene_tab[!duplicated(Geneid),] # remove duplicated Geneid which can happen when gtf not from ensembl
     setkey(gtf_gene_tab,"Geneid")
 
     gtf_gene_tab<-filterGTF(gtf_gene_tab,geneList,keepGene,chrmList,keepChrm)
   }
 
-  if(analysis_type %like% "featureCount" | analysis_type %like% "mirbase"){
+  if(analysis_type %like% "featureCount" | analysis_type %like% "HTSeqCount" | analysis_type %like% "mirbase"){
     txi <- NULL
     
     count_dt <- fread(counts_file)
@@ -102,6 +103,8 @@ read_and_prepare_count_data <- function(counts_file,experiment_design,gtf_filena
     count_dt[,c("Chr","Start","End","Strand","Length") := NULL]
     count_dt <- melt(count_dt,measure.vars = experiment_design$sample_name,variable.name = "sample_name",value.name = "count")
     count_dt[,sample_name := factor(sample_name,levels = experiment_design$sample_name)]
+    # counts from HTSeq could be numeric with decimals, but we want to keep them as integers for DESeq2, so we round them here
+    count_dt[,count := as.integer(round(count))]
     count_dt[,sum_count := sum(count),by = Geneid]
     count_dt[,mean_count := mean(count),by = Geneid]
     print(paste0("Total number of genes in the data: ",length(count_dt$Geneid)))
