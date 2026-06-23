@@ -86,31 +86,177 @@ def count_tab_input(wildcards):
 
     return expand("DE_{analysis_type}/complete_{analysis_type}_table.{suffix}",analysis_type=wildcards.analysis_type,suffix=suffix)[0]
 
-rule DE_computation:
-    input:  count_tab = count_tab_input,
-            gtf= config["organism_gtf"], # defined in utilities
-    output: table = expand("DE_{{analysis_type}}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list),
+# Original rule commented out - replaced by modular rules below
+# rule DE_computation:
+#     input:  count_tab = count_tab_input,
+#             gtf= config["organism_gtf"], # defined in utilities
+#     output: table = expand("DE_{{analysis_type}}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list),
+#
+#     params: organism = config["organism"],
+#             paired_replicates = config["paired_replicates"],
+#             sample_tab = sample_tab,
+#             experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
+#             comparison_dir_list = comparison_dir_list,
+#             keep_not_compared_samples_for_normalization = config["keep_not_compared_samples_for_normalization"],
+#             normalize_data_per_comparison = config["normalize_data_per_comparison"],
+#             use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
+#             pvalue_for_viz= config["pvalue_for_viz"],
+#             fold_change_threshold= config["fold_change_threshold"],
+#             named_in_viz= config["named_in_viz"],
+#             remove_genes_with_sum_read_count_threshold=config["remove_genes_with_sum_read_count_threshold"],
+#             remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
+#             geneList= config["filter_geneList"],
+#             keepGene=config["filter_keepGene"],
+#             chrmList=config["filter_chrmList"],
+#             keepChrm=config["filter_keepChrm"],
+#     log:    "logs/DE/DE_{analysis_type}.log"
+#     conda:  "../wrappers/DE_computation/env.yaml"
+#     script: "../wrappers/DE_computation/script.py"
 
-    params: organism = config["organism"],
-            paired_replicates = config["paired_replicates"],
-            sample_tab = sample_tab,
-            experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
-            comparison_dir_list = comparison_dir_list,
-            keep_not_compared_samples_for_normalization = config["keep_not_compared_samples_for_normalization"],
-            normalize_data_per_comparison = config["normalize_data_per_comparison"],
-            use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
-            pvalue_for_viz= config["pvalue_for_viz"],
-            fold_change_threshold= config["fold_change_threshold"],
-            named_in_viz= config["named_in_viz"],
-            remove_genes_with_sum_read_count_threshold=config["remove_genes_with_sum_read_count_threshold"],
-            remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
-            geneList= config["filter_geneList"],
-            keepGene=config["filter_keepGene"],
-            chrmList=config["filter_chrmList"],
-            keepChrm=config["filter_keepChrm"],
-    log:    "logs/DE/DE_{analysis_type}.log"
-    conda:  "../wrappers/DE_computation/env.yaml"
-    script: "../wrappers/DE_computation/script.py"
+
+# ============================================================================
+# New modular DE computation rules
+# ============================================================================
+
+# Rule: Load count data and create count_data_original/txi objects
+rule load_count_data:
+    input:
+        count_tab = count_tab_input,
+        gtf = config["organism_gtf"]
+    output:
+        output_dir = directory("DE_{analysis_type}/loading_data"),
+        count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
+        txi = "DE_{analysis_type}/loading_data/txi.RDS"
+    params:
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
+        geneList = config["filter_geneList"],
+        keepGene = config["filter_keepGene"],
+        chrmList = config["filter_chrmList"],
+        keepChrm = config["filter_keepChrm"],
+        remove_genes_with_sum_read_count_threshold = config["remove_genes_with_sum_read_count_threshold"],
+        remove_genes_with_mean_read_count_threshold = config["remove_genes_with_mean_read_count_threshold"]
+    log:
+        "logs/DE/load_count_data_{analysis_type}.log"
+    conda:
+        "../wrappers/DE_computation_loading_data/env.yaml"
+    script:
+        "../wrappers/DE_computation_loading_data/script.py"
+
+
+# Rule: Normalize samples and generate PCA/heatmap/MDS plots (all samples together)
+# Always created, regardless of normalize_data_per_comparison setting
+rule normalize_and_visualize:
+    input:
+        count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
+        txi = "DE_{analysis_type}/loading_data/txi.RDS",
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+    output:
+        output_dir = directory("DE_{analysis_type}/PCA"),
+        dds = "DE_{analysis_type}/PCA/dds_normalized.RDS",
+        count_data_normalized = "DE_{analysis_type}/PCA/count_data_normalized.RDS",
+        edgeR_DGEList = "DE_{analysis_type}/PCA/edgeR_DGEList_normalized.RDS",
+        edgeR_fit = "DE_{analysis_type}/PCA/edgeR_fit_normalized.RDS"
+    params:
+        condition_to_compare_vec = lambda wildcards: "|".join(condition_list),
+        analysis_type = lambda wildcards: wildcards.analysis_type
+    log:
+        "logs/DE/normalize_and_visualize_{analysis_type}.log"
+    conda:
+        "../wrappers/DE_computation_PCA/env.yaml"
+    script:
+        "../wrappers/DE_computation_PCA/script.py"
+
+
+# Rule: Prepare comparison-specific normalized data
+# If normalize_data_per_comparison = FALSE: copy from PCA
+# If normalize_data_per_comparison = TRUE: recompute normalization with subsetted data
+rule prepare_comparison_data:
+    input:
+        pca_dds = "DE_{analysis_type}/PCA/dds_normalized.RDS",
+        pca_count = "DE_{analysis_type}/PCA/count_data_normalized.RDS",
+        pca_edger = "DE_{analysis_type}/PCA/edgeR_DGEList_normalized.RDS",
+        pca_edger_fit = "DE_{analysis_type}/PCA/edgeR_fit_normalized.RDS",
+        count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
+        txi = "DE_{analysis_type}/loading_data/txi.RDS",
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+    output:
+        output_dir = directory("DE_{analysis_type}/{comparison}/normalized"),
+        dds = "DE_{analysis_type}/{comparison}/normalized/dds_normalized.RDS",
+        count_data_normalized = "DE_{analysis_type}/{comparison}/normalized/count_data_normalized.RDS",
+        edgeR_DGEList = "DE_{analysis_type}/{comparison}/normalized/edgeR_DGEList_normalized.RDS",
+        edgeR_fit = "DE_{analysis_type}/{comparison}/normalized/edgeR_fit_normalized.RDS"
+    params:
+        normalize_per_comparison = config["normalize_data_per_comparison"],
+        comparison_conditions = lambda wildcards: "_vs_".join(wildcards.comparison.split("_vs_")[::-1]),  # Reverse for contrast
+        pvalue_for_viz = config["pvalue_for_viz"],
+        fold_change_threshold = config["fold_change_threshold"],
+        named_in_viz = config["named_in_viz"]
+    log:
+        "logs/DE/prepare_comparison_data_{analysis_type}_{comparison}.log"
+    conda:
+        "../wrappers/DE_computation_PCA/env.yaml"
+    script:
+        "../wrappers/DE_computation_PCA/prepare_comparison_data.py"
+
+
+# Rule: Run DESeq2 for a specific comparison
+rule deseq2_computation:
+    input:
+        dds = "DE_{analysis_type}/{comparison}/normalized/dds_normalized.RDS",
+        count_data_normalized = "DE_{analysis_type}/{comparison}/normalized/count_data_normalized.RDS",
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+    output:
+        output_dir = directory("DE_{analysis_type}/{comparison}/DESeq2"),
+        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv"
+    params:
+        pvalue_for_viz = config["pvalue_for_viz"],
+        fold_change_threshold = config["fold_change_threshold"],
+        named_in_viz = config["named_in_viz"]
+    log:
+        "logs/DE/deseq2_{analysis_type}_{comparison}.log"
+    conda:
+        "../wrappers/DE_computation_DESeq2/env.yaml"
+    script:
+        "../wrappers/DE_computation_DESeq2/script.py"
+
+
+# Rule: Run edgeR for a specific comparison
+rule edger_computation:
+    input:
+        edgeR_DGEList = "DE_{analysis_type}/{comparison}/normalized/edgeR_DGEList_normalized.RDS",
+        edgeR_fit = "DE_{analysis_type}/{comparison}/normalized/edgeR_fit_normalized.RDS",
+        count_data_normalized = "DE_{analysis_type}/{comparison}/normalized/count_data_normalized.RDS"
+    output:
+        output_dir = directory("DE_{analysis_type}/{comparison}/edgeR"),
+        edger_tsv = "DE_{analysis_type}/{comparison}/edgeR/edgeR_{comparison}.tsv"
+    params:
+        pvalue_for_viz = config["pvalue_for_viz"],
+        fold_change_threshold = config["fold_change_threshold"],
+        named_in_viz = config["named_in_viz"]
+    log:
+        "logs/DE/edger_{analysis_type}_{comparison}.log"
+    conda:
+        "../wrappers/DE_computation_edgeR/env.yaml"
+    script:
+        "../wrappers/DE_computation_edgeR/script.py"
+
+
+# Rule: Compare DESeq2 and edgeR results
+rule deseq2_edger_overlap:
+    input:
+        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv",
+        edger_tsv = "DE_{analysis_type}/{comparison}/edgeR/edgeR_{comparison}.tsv"
+    output:
+        output_dir = directory("DE_{analysis_type}/{comparison}/overlap")
+    params:
+        pvalue_for_viz = config["pvalue_for_viz"],
+        fold_change_threshold = config["fold_change_threshold"]
+    log:
+        "logs/DE/overlap_{analysis_type}_{comparison}.log"
+    conda:
+        "../wrappers/DE_computation_merge_results/env.yaml"
+    script:
+        "../wrappers/DE_computation_merge_results/script.py"
 
 
 # def final_variant_calling_report_input(wildcards):
@@ -120,7 +266,10 @@ rule DE_computation:
 
 
 rule DE_report:
-    input: tsv = expand("DE_{analysis_type}/{comparison}/DESeq2.tsv", comparison=comparison_dir_list,analysis_type=analysis)
+    input:
+        deseq2_tsv = expand("DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv", comparison=comparison_dir_list, analysis_type=analysis),
+        edger_tsv = expand("DE_{analysis_type}/{comparison}/edgeR/edgeR_{comparison}.tsv", comparison=comparison_dir_list, analysis_type=analysis),
+        overlap_dir = expand("DE_{analysis_type}/{comparison}/overlap", comparison=comparison_dir_list, analysis_type=analysis)
     output: html = "final_report.html"
     params: config = "DE_report.json"
     conda: "../wrappers/DE_report/env.yaml"
