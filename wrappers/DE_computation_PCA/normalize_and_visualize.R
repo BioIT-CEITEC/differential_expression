@@ -9,6 +9,7 @@ library(limma)
 library(ggplot2)
 library(pheatmap)
 library(ggpubr)
+library(RColorBrewer)
 
 args <- commandArgs(trailingOnly = T)
 count_data_file <- args[1]
