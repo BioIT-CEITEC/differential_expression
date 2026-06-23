@@ -12,7 +12,7 @@ f.close()
 
 command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/load_count_data.R " + \
           snakemake.input.count_tab + " " + \
-          snakemake.params.experiment_design + " " + \
+          snakemake.input.experiment_design + " " + \
           snakemake.input.gtf + " " + \
           snakemake.wildcards.analysis_type + " " + \
           str(snakemake.params.geneList) + " " + \
