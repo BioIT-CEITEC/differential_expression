@@ -177,7 +177,7 @@ def count_tab_input(wildcards):
 rule create_experiment_design:
     threads: 1
     input:
-        sample_tab = BR.sample_tab  # Use BioRoots sample table
+        sample_tab = sample_tab  # Use BioRoots sample table
     output:
         experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
     params:
