@@ -6,15 +6,23 @@ from snakemake.shell import shell
 shell.executable("/bin/bash")
 log_filename = str(snakemake.log)
 
+
 f = open(log_filename, 'a+')
 f.write("\n##\n## RULE: load_count_data \n##\n")
 f.close()
 
+# creation of the TAB delimited table directly from the panda sample table
+snakemake.params.sample_tab.to_csv(snakemake.params.experiment_design, index=False,sep="\t")
+
+
 command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/load_count_data.R " + \
-          snakemake.input.count_tab + " " + \
-          snakemake.input.experiment_design + " " + \
+          snakemake.params.experiment_design + " " +\
+          snakemake.input.count_tab + " " +\
+          ",".join(snakemake.params.comparison_dir_list) + " " +\
           snakemake.input.gtf + " " + \
           snakemake.wildcards.analysis_type + " " + \
+          str(snakemake.params.paired_replicates) + " " +\
+          str(snakemake.params.use_custom_batch_effect_grouping) + " " +\
           str(snakemake.params.geneList) + " " + \
           str(snakemake.params.keepGene) + " " + \
           str(snakemake.params.chrmList) + " " + \
@@ -26,4 +34,5 @@ command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/load_count
 
 f = open(log_filename, 'a+')
 f.write("## COMMAND: " + command + "\n")
+f.write("## args <- c(\"" + "\",\"".join(command.split(" ")[2:-3]) + "\")\n")
 shell(command)

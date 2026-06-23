@@ -5,37 +5,29 @@
 library(data.table)
 
 args <- commandArgs(trailingOnly = T)
-counts_file <- args[1]
-experiment_design_file <- args[2]
-gtf_filename <- args[3]
-analysis_type <- args[4]
-geneList <- args[5]
-keepGene <- as.logical(toupper(args[6]))
-chrmList <- args[7]
-keepChrm <- as.logical(toupper(args[8]))
-remove_genes_with_sum_read_count_threshold <- as.integer(args[9])
-remove_genes_with_mean_read_count_threshold <- as.integer(args[10])
-output_dir <- args[11]
+experiment_design_file <- args[1]
+counts_file <- args[2]
+comparison_vec <- strsplit(args[3],split = ",")[[1]]
+gtf_filename <- args[4]
+analysis_type <- args[5]
+paired_samples <- as.logical(toupper(args[6]))
+use_custom_batch_effect_grouping <- as.logical(toupper(args[7]))
+geneList <- args[8]
+keepGene <- as.logical(toupper(args[9]))
+chrmList <- args[10]
+keepChrm <- as.logical(toupper(args[11]))
+remove_genes_with_sum_read_count_threshold <- as.integer(args[12])
+remove_genes_with_mean_read_count_threshold <- as.integer(args[13])
+output_dir <- args[14]
 
 # Source utilities from parent DE_computation folder
 script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))
 source(paste0(script.dir, "/../DE_computation/load_data_func.R"))
 
-# Read experiment design
-experiment_design <- fread(experiment_design_file)
-if("patient" %in% colnames(experiment_design)){
-  # Patient column already exists (from paired design)
-} else {
-  experiment_design[,patient := paste0("pat",seq_along(sample_name))]
-}
-
-# Make syntactically valid names
-for (j in names(experiment_design)[sapply(experiment_design,class) == "character"]) {
-  set(experiment_design, j = j, value = make.names(experiment_design[[j]]))
-}
-experiment_design[,sample_name:=make.names(sample_name)]
-experiment_design[,condition := factor(condition,levels = unique(condition))]
-experiment_design[,patient := factor(patient,levels = unique(patient))]
+res_list <- read_and_prepare_design_data(comparison_vec,experiment_design_file,paired_samples,use_custom_batch_effect_grouping)
+  experiment_design <- res_list[[1]]
+  comparison_vec <- res_list[[2]]
+  condition_to_compare_vec <- res_list[[3]]
 
 # Read and prepare count data
 res_list <- read_and_prepare_count_data(
@@ -50,6 +42,8 @@ txi <- res_list[[2]]
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Save objects
+saveRDS(comparison_vec, file.path(output_dir, "comparison_vec.RDS"))
+saveRDS(condition_to_compare_vec, file.path(output_dir, "condition_to_compare_vec.RDS"))
 saveRDS(count_dt_original, file.path(output_dir, "count_data_original.RDS"))
 
 # Always save txi - NULL for featureCount-based analyses, actual txi object for RSEM/kallisto/salmon

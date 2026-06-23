@@ -173,42 +173,28 @@ def count_tab_input(wildcards):
 # New modular DE computation rules
 # ============================================================================
 
-# Rule: Create experiment design file from sample table
-rule create_experiment_design:
-    threads: 1
-    input:
-        sample_tab = sample_tab  # Use BioRoots sample table
-    output:
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
-    params:
-        paired_replicates = config["paired_replicates"],
-        use_custom_batch_effect_grouping = config.get("use_custom_batch_effect_grouping", False)
-    log:
-        "logs/DE/create_experiment_design_{analysis_type}.log"
-    conda:
-        "../wrappers/DE_computation_loading_data/env.yaml"
-    script:
-        "../wrappers/DE_computation_loading_data/create_experiment_design.py"
-
-
 # Rule: Load count data and create count_data_original/txi objects
 rule load_count_data:
     threads: 1
     input:
         count_tab = count_tab_input,
         gtf = config["organism_gtf"],
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
     output:
         output_dir = directory("DE_{analysis_type}/loading_data"),
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
         txi = "DE_{analysis_type}/loading_data/txi.RDS"
     params:
-        geneList = config["filter_geneList"],
-        keepGene = config["filter_keepGene"],
-        chrmList = config["filter_chrmList"],
-        keepChrm = config["filter_keepChrm"],
-        remove_genes_with_sum_read_count_threshold = config["remove_genes_with_sum_read_count_threshold"],
-        remove_genes_with_mean_read_count_threshold = config["remove_genes_with_mean_read_count_threshold"]
+        paired_replicates = config["paired_replicates"],
+        sample_tab = sample_tab,
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
+        comparison_dir_list = comparison_dir_list,
+        use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
+        remove_genes_with_sum_read_count_threshold=config["remove_genes_with_sum_read_count_threshold"],
+        remove_genes_with_mean_read_count_threshold=config["remove_genes_with_mean_read_count_threshold"],
+        geneList= config["filter_geneList"],
+        keepGene=config["filter_keepGene"],
+        chrmList=config["filter_chrmList"],
+        keepChrm=config["filter_keepChrm"],
     log:
         "logs/DE/load_count_data_{analysis_type}.log"
     conda:
