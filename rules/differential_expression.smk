@@ -161,27 +161,18 @@ def count_tab_input(wildcards):
 # Rule: Create experiment design file from sample table
 rule create_experiment_design:
     input:
-        count_tab = count_tab_input
+        sample_tab = BR.sample_tab  # Use BioRoots sample table
     output:
         experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
     params:
-        sample_tab = lambda wildcards: sample_tab,
-        paired_replicates = config["paired_replicates"]
+        paired_replicates = config["paired_replicates"],
+        use_custom_batch_effect_grouping = config.get("use_custom_batch_effect_grouping", False)
     log:
         "logs/DE/create_experiment_design_{analysis_type}.log"
-    run:
-        import pandas as pd
-        df = params.sample_tab.copy()
-        if params.paired_replicates:
-            # Patient is determined by replicate ID
-            if 'batch_group' in df.columns and config.get('use_custom_batch_effect_grouping', False):
-                df['patient'] = df['batch_group']
-            else:
-                df['patient'] = df['replicate']
-        else:
-            # Each sample is its own patient
-            df['patient'] = 'pat' + df['sample_name'].astype(str)
-        df.to_csv(output.experiment_design, sep='\t', index=False)
+    conda:
+        "../wrappers/DE_computation_loading_data/env.yaml"
+    script:
+        "../wrappers/DE_computation_loading_data/create_experiment_design.py"
 
 
 # Rule: Load count data and create count_data_original/txi objects

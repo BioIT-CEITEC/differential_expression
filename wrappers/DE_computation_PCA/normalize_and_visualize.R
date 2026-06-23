@@ -30,8 +30,9 @@ if(txi_file != "" && file.exists(txi_file)){
 } else {
   txi <- NULL
 }
-experiment_design <- unique(count_dt_original[,.(sample_name, condition, patient)])
-setorder(experiment_design, condition, patient)
+
+# Load experiment design from input file (created by create_experiment_design rule)
+experiment_design <- fread(experiment_design_file)
 condition_to_compare_vec <- unique(experiment_design$condition)
 
 # Create output directory

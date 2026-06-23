@@ -6,6 +6,7 @@
 ####################################################################################################
 
 library(data.table)
+library(RColorBrewer)
 
 args <- commandArgs(trailingOnly = T)
 pca_dds_file <- args[1]

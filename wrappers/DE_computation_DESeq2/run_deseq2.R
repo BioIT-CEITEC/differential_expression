@@ -22,8 +22,9 @@ source(paste0(script.dir, "/../DE_computation/DESeq2_func.R"))
 # Load data
 dds <- readRDS(dds_file)
 count_dt <- readRDS(count_data_normalized_file)
-experiment_design <- unique(count_dt[,.(sample_name, condition, patient)])
-setorder(experiment_design, condition, patient)
+
+# Load experiment design from input file
+experiment_design <- fread(experiment_design_file)
 
 # Parse comparison
 condsToCompare <- strsplit(comparison_name, "_vs_")[[1]]
