@@ -41,9 +41,9 @@ def get_comparison_dir_list(condition_list):
 if config['conditions_to_compare'] == "all":
     condition_list = sorted(sample_tab.condition.unique())
     condition_list_first = [condition for condition in condition_list if
-                            not re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+                            not re.search("ctr|ctrl|control|wildtype|wt|normal|dmso",condition,flags=re.IGNORECASE)]
     condition_list_second = [condition for condition in condition_list if
-                             re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+                             re.search("ctr|ctrl|control|wildtype|wt|normal|dmso",condition,flags=re.IGNORECASE)]
     condition_list = condition_list_first + condition_list_second
     comparison_dir_list = get_comparison_dir_list(condition_list)
 else:
@@ -114,7 +114,7 @@ count_over = config['count_over'].split(",")
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical|HTSeqCount_exon|HTSeqCount_gene|HTSeqCount_transcript|HTSeqCount_3pUTRn|HTSeqCount_5pUTR",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTR|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical|HTSeqCount_exon|HTSeqCount_gene|HTSeqCount_transcript|HTSeqCount_3pUTR|HTSeqCount_5pUTR",
      count_over="gene|exon|transcript|three_prime_UTR|five_prime_UTR"
      #data_type= "tsv|RData"
 
