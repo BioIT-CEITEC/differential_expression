@@ -160,6 +160,7 @@ def count_tab_input(wildcards):
 
 # Rule: Create experiment design file from sample table
 rule create_experiment_design:
+    threads: 1
     input:
         sample_tab = BR.sample_tab  # Use BioRoots sample table
     output:
@@ -177,6 +178,7 @@ rule create_experiment_design:
 
 # Rule: Load count data and create count_data_original/txi objects
 rule load_count_data:
+    threads: 1
     input:
         count_tab = count_tab_input,
         gtf = config["organism_gtf"],
@@ -203,6 +205,7 @@ rule load_count_data:
 # Rule: Normalize samples and generate PCA/heatmap/MDS plots (all samples together)
 # Always created, regardless of normalize_data_per_comparison setting
 rule normalize_and_visualize:
+    threads: 1
     input:
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
         txi = "DE_{analysis_type}/loading_data/txi.RDS",

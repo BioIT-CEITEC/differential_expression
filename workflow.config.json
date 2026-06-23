@@ -5,7 +5,7 @@
     "label":"Differential expression",
     "type":"differential_expression",
     "run_parameters": {
-      "cpu": 2,
+      "cpu": 10,
       "memory": 65
     },
     "inputs": [],
