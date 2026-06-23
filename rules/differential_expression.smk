@@ -196,7 +196,6 @@ rule load_count_data:
         txi = "DE_{analysis_type}/loading_data/txi.RDS"
     params:
         geneList = config["filter_geneList"],
-        geneList = config["filter_geneList"],
         keepGene = config["filter_keepGene"],
         chrmList = config["filter_chrmList"],
         keepChrm = config["filter_keepChrm"],
