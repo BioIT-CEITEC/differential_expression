@@ -12,11 +12,11 @@ f.write("\n##\n## RULE: load_count_data \n##\n")
 f.close()
 
 # creation of the TAB delimited table directly from the panda sample table
-snakemake.params.sample_tab.to_csv(snakemake.params.experiment_design, index=False,sep="\t")
+snakemake.params.sample_tab.to_csv(snakemake.output.experiment_design, index=False,sep="\t")
 
 
 command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/load_count_data.R " + \
-          snakemake.params.experiment_design + " " +\
+          snakemake.output.experiment_design + " " +\
           snakemake.input.count_tab + " " +\
           ",".join(snakemake.params.comparison_dir_list) + " " +\
           snakemake.input.gtf + " " + \

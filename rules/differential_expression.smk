@@ -182,11 +182,11 @@ rule load_count_data:
     output:
         output_dir = directory("DE_{analysis_type}/loading_data"),
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
-        txi = "DE_{analysis_type}/loading_data/txi.RDS"
+        txi = "DE_{analysis_type}/loading_data/txi.RDS",
+        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
     params:
         paired_replicates = config["paired_replicates"],
         sample_tab = sample_tab,
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv",
         comparison_dir_list = comparison_dir_list,
         use_custom_batch_effect_grouping= config["use_custom_batch_effect_grouping"],
         remove_genes_with_sum_read_count_threshold=config["remove_genes_with_sum_read_count_threshold"],
