@@ -3,6 +3,24 @@
 # Uses existing functions from DESeq2_edgeR_edgeR_overlap_func.R
 ####################################################################################################
 
+library(data.table)
+library(RColorBrewer)
+library(ggplot2)
+library(DESeq2)
+library(cowplot)
+library(gplots)
+library(ggrepel)
+library(ggpubr)
+library(pheatmap)
+library(edgeR)
+library(limma)
+library(svglite)
+library(plotly)
+library(htmlwidgets)
+library(rtracklayer)
+library(ggupset)
+library(UpSetR)
+
 args <- commandArgs(trailingOnly = T)
 deseq2_results_file <- args[1]             # DESeq2.tsv from DESeq2 rule
 edger_results_file <- args[2]              # edgeR.tsv from edgeR rule

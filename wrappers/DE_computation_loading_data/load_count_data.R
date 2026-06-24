@@ -42,6 +42,7 @@ txi <- res_list[[2]]
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Save objects
+saveRDS(experiment_design, file.path(output_dir, "experiment_design.RDS"))
 saveRDS(comparison_vec, file.path(output_dir, "comparison_vec.RDS"))
 saveRDS(condition_to_compare_vec, file.path(output_dir, "condition_to_compare_vec.RDS"))
 saveRDS(count_dt_original, file.path(output_dir, "count_data_original.RDS"))

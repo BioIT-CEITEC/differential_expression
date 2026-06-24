@@ -15,6 +15,7 @@ command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/normalize_
           snakemake.input.txi + " " + \
           snakemake.input.experiment_design + " " + \
           snakemake.wildcards.analysis_type + " " + \
+          snakemake.params.condition_to_compare_vec + " " + \
           snakemake.output.output_dir + \
           " >> " + log_filename + " 2>&1"
 

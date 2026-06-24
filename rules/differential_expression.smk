@@ -183,7 +183,7 @@ rule load_count_data:
         output_dir = directory("DE_{analysis_type}/loading_data"),
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
         txi = "DE_{analysis_type}/loading_data/txi.RDS",
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+        experiment_design = "DE_{analysis_type}/loading_data/experiment_design.RDS"
     params:
         paired_replicates = config["paired_replicates"],
         sample_tab = sample_tab,
@@ -198,7 +198,7 @@ rule load_count_data:
     log:
         "logs/DE/load_count_data_{analysis_type}.log"
     conda:
-        "../wrappers/DE_computation_loading_data/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_loading_data/script.py"
 
@@ -210,7 +210,7 @@ rule normalize_and_visualize:
     input:
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
         txi = "DE_{analysis_type}/loading_data/txi.RDS",
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+        experiment_design = "DE_{analysis_type}/loading_data/experiment_design.RDS"
     output:
         output_dir = directory("DE_{analysis_type}/PCA"),
         dds = "DE_{analysis_type}/PCA/dds_normalized.RDS",
@@ -218,12 +218,12 @@ rule normalize_and_visualize:
         edgeR_DGEList = "DE_{analysis_type}/PCA/edgeR_DGEList_normalized.RDS",
         edgeR_fit = "DE_{analysis_type}/PCA/edgeR_fit_normalized.RDS"
     params:
-        condition_to_compare_vec = lambda wildcards: "|".join(condition_list),
+        condition_to_compare_vec = "DE_{analysis_type}/loading_data/condition_to_compare_vec.RDS",
         analysis_type = lambda wildcards: wildcards.analysis_type
     log:
         "logs/DE/normalize_and_visualize_{analysis_type}.log"
     conda:
-        "../wrappers/DE_computation_PCA/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_PCA/script.py"
 
@@ -240,7 +240,7 @@ rule prepare_comparison_data:
         pca_edger_fit = "DE_{analysis_type}/PCA/edgeR_fit_normalized.RDS",
         count_data_original = "DE_{analysis_type}/loading_data/count_data_original.RDS",
         txi = "DE_{analysis_type}/loading_data/txi.RDS",
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
+        experiment_design = "DE_{analysis_type}/loading_data/experiment_design.RDS"
     output:
         output_dir = directory("DE_{analysis_type}/{comparison}/normalized"),
         dds = "DE_{analysis_type}/{comparison}/normalized/dds_normalized.RDS",
@@ -256,7 +256,7 @@ rule prepare_comparison_data:
     log:
         "logs/DE/prepare_comparison_data_{analysis_type}_{comparison}.log"
     conda:
-        "../wrappers/DE_computation_PCA/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_PCA/prepare_comparison_data.py"
 
@@ -267,18 +267,19 @@ rule deseq2_computation:
     input:
         dds = "DE_{analysis_type}/{comparison}/normalized/dds_normalized.RDS",
         count_data_normalized = "DE_{analysis_type}/{comparison}/normalized/count_data_normalized.RDS",
-        experiment_design = "DE_{analysis_type}/DE_experiment_design.tsv"
     output:
         output_dir = directory("DE_{analysis_type}/{comparison}/DESeq2"),
-        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv"
+        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv",
+        full_deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/detail_results/full_DESeq2.tsv"
     params:
         pvalue_for_viz = config["pvalue_for_viz"],
         fold_change_threshold = config["fold_change_threshold"],
-        named_in_viz = config["named_in_viz"]
+        named_in_viz = config["named_in_viz"],
+        experiment_design = "DE_{analysis_type}/loading_data/experiment_design.RDS"
     log:
         "logs/DE/deseq2_{analysis_type}_{comparison}.log"
     conda:
-        "../wrappers/DE_computation_DESeq2/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_DESeq2/script.py"
 
@@ -300,7 +301,7 @@ rule edger_computation:
     log:
         "logs/DE/edger_{analysis_type}_{comparison}.log"
     conda:
-        "../wrappers/DE_computation_edgeR/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_edgeR/script.py"
 
@@ -309,7 +310,7 @@ rule edger_computation:
 rule deseq2_edger_overlap:
     threads: 1
     input:
-        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/DESeq2_{comparison}.tsv",
+        deseq2_tsv = "DE_{analysis_type}/{comparison}/DESeq2/detail_results/full_DESeq2.tsv",
         edger_tsv = "DE_{analysis_type}/{comparison}/edgeR/edgeR_{comparison}.tsv"
     output:
         output_dir = directory("DE_{analysis_type}/{comparison}/overlap")
@@ -319,7 +320,7 @@ rule deseq2_edger_overlap:
     log:
         "logs/DE/overlap_{analysis_type}_{comparison}.log"
     conda:
-        "../wrappers/DE_computation_merge_results/env.yaml"
+        "../wrappers/DE_computation/env.yaml"
     script:
         "../wrappers/DE_computation_merge_results/script.py"
 

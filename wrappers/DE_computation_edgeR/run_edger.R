@@ -4,6 +4,22 @@
 ####################################################################################################
 
 library(data.table)
+library(RColorBrewer)
+library(ggplot2)
+library(DESeq2)
+library(cowplot)
+library(gplots)
+library(ggrepel)
+library(ggpubr)
+library(pheatmap)
+library(edgeR)
+library(limma)
+library(svglite)
+library(plotly)
+library(htmlwidgets)
+library(rtracklayer)
+library(ggupset)
+library(UpSetR)
 
 args <- commandArgs(trailingOnly = T)
 edgeR_DGEList_file <- args[1]              # Pre-computed edgeR_DGEList.RDS from normalization step
@@ -17,6 +33,7 @@ output_dir <- args[8]
 
 # Source utilities from parent DE_computation folder
 script.dir <- dirname(gsub("--file=","",commandArgs()[grep("--file",commandArgs())]))
+source(paste0(script.dir, "/../DE_computation/DESeq2_func.R"))
 source(paste0(script.dir, "/../DE_computation/edgeR_func.R"))
 
 # Load data
@@ -31,6 +48,15 @@ condsToCompare <- strsplit(comparison_name, "_vs_")[[1]]
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 cat("Running edgeR result extraction for comparison:", comparison_name, "\n")
+
+# Create normalization-specific plots and data for this comparison
+cat("Creating normalization-specific edgeR results...\n")
+create_normalization_specific_edgeR_results(
+  output_dir = output_dir,
+  d = edgeR_DGEList,
+  count_dt = count_dt[condition %in% condsToCompare],
+  reduced_plot_design = TRUE
+)
 
 # Use existing function to get comparison-specific results
 res_list <- get_comparison_specific_edgeR_table(

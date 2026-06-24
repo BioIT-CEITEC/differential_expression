@@ -4,6 +4,22 @@
 ####################################################################################################
 
 library(data.table)
+library(RColorBrewer)
+library(ggplot2)
+library(DESeq2)
+library(cowplot)
+library(gplots)
+library(ggrepel)
+library(ggpubr)
+library(pheatmap)
+library(edgeR)
+library(limma)
+library(svglite)
+library(plotly)
+library(htmlwidgets)
+library(rtracklayer)
+library(ggupset)
+library(UpSetR)
 
 args <- commandArgs(trailingOnly = T)
 dds_file <- args[1]                          # Pre-computed dds.RDS from normalization step
@@ -24,7 +40,7 @@ dds <- readRDS(dds_file)
 count_dt <- readRDS(count_data_normalized_file)
 
 # Load experiment design from input file
-experiment_design <- fread(experiment_design_file)
+experiment_design <- readRDS(experiment_design_file)
 
 # Parse comparison
 condsToCompare <- strsplit(comparison_name, "_vs_")[[1]]
@@ -33,6 +49,15 @@ condsToCompare <- strsplit(comparison_name, "_vs_")[[1]]
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 cat("Running DESeq2 result extraction for comparison:", comparison_name, "\n")
+
+# Create normalization-specific plots and data for this comparison
+cat("Creating normalization-specific DESeq2 results...\n")
+create_normalization_specific_DESeq2_results(
+  output_dir = output_dir,
+  dds = dds,
+  count_dt = count_dt[condition %in% condsToCompare],
+  condition_to_compare_vec = condsToCompare
+)
 
 # Use existing function to get comparison-specific results
 comp_res <- get_comparison_specific_DESeq2_table(

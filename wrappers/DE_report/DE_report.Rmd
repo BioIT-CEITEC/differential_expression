@@ -109,7 +109,7 @@ norm.plot<-function(analysis_type = analysis_type){
     output<-c(output,cat("#### ",analysis_type$name[j],"\n"))
 
     if(config_json$keep_not_compared_samples_for_normalization[1] == TRUE){
-      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = "PCA",path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
+      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
     }else{
       ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = comparison, path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
     }
@@ -145,8 +145,8 @@ pca_heatmap.plot<-function(analysis_type = analysis_type, comparison = compariso
     output<-c(output,cat("#### Result over all condition {.tabset} \n"))
     for(j in 1:length(analysis_type$name)){
       output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
-      allpca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
-      allheatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
+      allpca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
+      allheatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
       all_pca <- allpca.dt[analysis.type == analysis_type$analysis[j],]$path
       all_heatmap <- allheatmap.dt[analysis.type == analysis_type$analysis[j],]$path
       output<-c(output,cat("<div align='center'><figure style='width:50%;float:left'><img src=",all_pca," />","\n"))
