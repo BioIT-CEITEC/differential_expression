@@ -1,0 +1,12 @@
+# Demo-specific files and folders
+.snakemake/
+.vscode/
+ref/
+tmp/
+DE_featureCount_exon/
+DE_report/
+logs/
+config_demo.json
+Snakefile_demo
+final_report.html
+Rplots.pdf

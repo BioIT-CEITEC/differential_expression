@@ -109,9 +109,9 @@ norm.plot<-function(analysis_type = analysis_type){
     output<-c(output,cat("#### ",analysis_type$name[j],"\n"))
 
     if(config_json$keep_not_compared_samples_for_normalization[1] == TRUE){
-      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = "all_condition_results/",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
+      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
     }else{
-      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = comparison, path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
+      ppnc.files <- plot.dt(analysis.type = analysis_type$analysis[j], comp.folder = comparison, path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "pre_post_norm_counts.svg", pattern2 = "pre_post_norm_counts.svg")
     }
 
     for(i in 1:length(ppnc.files$path)){
@@ -140,12 +140,13 @@ no_null<-norm.plot(analysis_type)
 ```{r de-pca, echo=FALSE, out.width="80%", results="asis", dev="svg"}
 pca_heatmap.plot<-function(analysis_type = analysis_type, comparison = comparison){
   output<-cat("- Samples from different condition clustering together might indicate a reduce effect coming from the tested treatment which often leads to low differentially expressed gene identification.","\n\n")
-  if (dir.exists(paste0("../",analysis_type$DE[1],"/all_condition_results"))) {
+  # Check for PCA folder (new location for all-sample normalization visualizations)
+  if (dir.exists(paste0("../",analysis_type$DE[1],"/PCA"))) {
     output<-c(output,cat("#### Result over all condition {.tabset} \n"))
     for(j in 1:length(analysis_type$name)){
       output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
-      allpca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "all_condition_results",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
-      allheatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "all_condition_results",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
+      allpca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
+      allheatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = "PCA",path.prefix = "../", path.suffix = "/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
       all_pca <- allpca.dt[analysis.type == analysis_type$analysis[j],]$path
       all_heatmap <- allheatmap.dt[analysis.type == analysis_type$analysis[j],]$path
       output<-c(output,cat("<div align='center'><figure style='width:50%;float:left'><img src=",all_pca," />","\n"))
@@ -159,8 +160,8 @@ pca_heatmap.plot<-function(analysis_type = analysis_type, comparison = compariso
   output <- c(output,cat("#### Results for each condition {.tabset} \n"))
   for(i in 1:length(comparison)){
     output<-cat("##### ",comparison[i]," {.tabset}","\n")
-    pca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison, path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
-    heatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,path.prefix = "../", path.suffix = "/detail_results/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
+    pca.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison, path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "sample_to_sample_PCA.svg", pattern2 = "sample_to_sample_PCA_batch.svg")
+    heatmap.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,path.prefix = "../", path.suffix = "/DESeq2/report_data/", pattern1 = "heatmaps_samples_log2.png", pattern2 = "heatmaps_samples_log_batch.png")
     for(j in 1:length(analysis_type$name)){
       output<-c(output,cat("###### ",analysis_type$name[j]," \n"))
       single_pca <- pca.dt[analysis.type == analysis_type$analysis[j] & comparison == comparison[i],]$path
@@ -217,9 +218,9 @@ summary.table<-function(comparison=comparison, analysis_type = analysis_type){
     tabl.de.de.all <- data.table()
 
     for(j in 1:length(analysis_type$DE)){
-      de.tab.edger <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/edgeR/edgeR.tsv"),
+      de.tab.edger <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/edgeR/edgeR_", comparison[i], ".tsv"),
                           sep  = "\t",header = T)
-      de.tab.deseq <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/detail_results/full_DESeq2.tsv"),
+      de.tab.deseq <- fread(paste0("../",analysis_type$DE[j],"/",comparison[i],"/DESeq2/detail_results/full_DESeq2.tsv"),
                           sep  = "\t",header = T)
       #de.tab.deseq.noIndFilt <- fread(paste0("../results/",DE[j],"/",comparison[i],"/all/DESeq2_noIndFilt.tsv"),
       #                    sep  = "\t",header = T)
@@ -290,10 +291,10 @@ volcano.ma.plots<-function(analysis_type = analysis_type, comparison=comparison)
   for(i in 1:length(comparison)){
     output<-cat("#### ",comparison[i]," {.tabset}","\n")
     volcano.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
-                          path.prefix = "../", path.suffix = "/report_data/",
+                          path.prefix = "../", path.suffix = "/DESeq2/report_data/",
                           pattern1 = "volcanoplot.+png", pattern2 = "volcanoplot.+png")
     ma.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
-                          path.prefix = "../", path.suffix = "/report_data/",
+                          path.prefix = "../", path.suffix = "/DESeq2/report_data/",
                           pattern1 = "MAplot.+png", pattern2 = "MAplot.+png")
     for(j in 1:length(analysis_type$name)){
       output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
@@ -325,7 +326,7 @@ top.de.plots<-function(analysis_type = analysis_type, comparison=comparison){
   for(i in 1:length(comparison)){
     output<-cat("#### ",comparison[i]," {.tabset}","\n")
     topDE.dt <- plot.dt(analysis.type = analysis_type$analysis, comp.folder = comparison,
-                          path.prefix = "../", path.suffix = "/report_data/",
+                          path.prefix = "../", path.suffix = "/DESeq2/report_data/",
                           pattern1 = "heatmap_selected_orderBaseMeanCluster.png", pattern2 = "heatmap_selected_orderBaseMeanCluster.png")
     for(j in 1:length(analysis_type$name)){
       output<-c(output,cat("##### ",analysis_type$name[j],"\n"))
@@ -380,7 +381,7 @@ no_null<-top.de.plots(analysis_type, comparison)
   - The compared conditions are always stated in the name of the folder
   - All the results in the corresponding folder are based on the currently compared conditions but in some of the cases other samples and conditions are added to the visualization/summaries as well
   - For example: **cond1_vs_cond2** compares cond1 to cond2. In the DE results then - positive log2FC signalizes more expression in cond1 (or less in cond2) and negative log2FC signalizes less expression in cond1 (or more in cond2).
-- Main output files are **DESeq2.tsv**, **DESeq2_noIndFilt.tsv**, and **edgeR.tsv**
+- Main output files are **DESeq2_<comparison>.tsv**, **DESeq2_noIndFilt_<comparison>.tsv**, and **edgeR_<comparison>.tsv**
 - All three main results contain several columns:
   - **first column (no name)** - Ensembl gene id
   - **baseMean** - an average expression of genes from samples from compared conditions
@@ -403,11 +404,10 @@ no_null<-top.de.plots(analysis_type, comparison)
   - **norm_counts.tsv** - the same information as in norm_counts.xlsx but in a text form.
 - **all_sig_genes_normCounts.pdf** – significantly DEG (here, “default cut-off” adj.p-value 0.05 and logFC 1 is considered) expression visualization. Selection of DE genes is based on the particular comparison but all conditions/samples are plotted. This is based on DESeq2 results.
 - **counts_barplot.pdf** - visualization of used (raw) read counts per sample
-- **DESeq2.tsv** – main results from differential gene expression by DESeq2. Description of the columns is given above. tsv is a tab-separated source file for the xlsx.
-- **DESeq2_noIndFilt.tsv** – results from differential gene expression without independent gene filtering (see Independent filtering and Cooks cut-off in DESeq2 manual). tsv is a tab-separated source file for the xlsx.
+- **DESeq2_<comparison>.tsv** – main results from differential gene expression by DESeq2. Description of the columns is given above. tsv is a tab-separated source file for the xlsx.
 - **DESeq2_de_genes_check.txt** and **DESeq2_de_genes_check_noIndFilt.txt** – basic summary of differential expression. “Default” adj.p-value of 0.05 and logFC of 1 are used. The upper part of the table considers only adj.p-value cut-off value, the lower part considers adj.p-value and logFC. This servers only for a  demonstration of the possible effect, not as a final result
 - **DESeq2_design_control.txt** - a control file for used sample design
-- **edgeR.tsv** – main results from differential gene expression by edgeR. tsv is a tab-separated source file for the xlsx.
+- **edgeR_<comparison>.tsv** – main results from differential gene expression by edgeR. tsv is a tab-separated source file for the xlsx.
 - **edgeR_de_genes_check.txt** - same as in case of DESeq2 - “quick and dirty” check of the effect to get a general idea about the differences.
 - **heatmap_selected_orderBaseMean.pdf** – heatmap of maximum top 20 most differentially expressed genes (based on adj. p-value) ordered by an average expression. Blue means low expression, red means high expression. The maximum top 20 genes are selected based on the compared groups but all samples are visualized. This is based on DESeq2 results.
 - **heatmap_selected_orderBaseMeanCluster.pdf** – heatmap of maximum top 20 most differentially expressed genes (based on adj. P-value, same as above) clustered by rows and columns. Blue means low expression, red means high expression. This is based on DESeq2 results.
