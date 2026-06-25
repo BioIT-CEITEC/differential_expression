@@ -13,6 +13,7 @@ library(ggpubr)
 library(RColorBrewer)
 library(plotly)
 library(htmlwidgets)
+library(cowplot)
 
 args <- commandArgs(trailingOnly = T)
 count_data_file <- args[1]
