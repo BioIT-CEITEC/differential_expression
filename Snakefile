@@ -41,9 +41,9 @@ def get_comparison_dir_list(condition_list):
 if config['conditions_to_compare'] == "all":
     condition_list = sorted(sample_tab.condition.unique())
     condition_list_first = [condition for condition in condition_list if
-                            not re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+                            not re.search("ctr|ctrl|control|wildtype|wt|normal|dmso",condition,flags=re.IGNORECASE)]
     condition_list_second = [condition for condition in condition_list if
-                             re.search("ctrl|control|wildtype|wt|normal",condition,flags=re.IGNORECASE)]
+                             re.search("ctr|ctrl|control|wildtype|wt|normal|dmso",condition,flags=re.IGNORECASE)]
     condition_list = condition_list_first + condition_list_second
     comparison_dir_list = get_comparison_dir_list(condition_list)
 else:
@@ -72,6 +72,24 @@ if config["featureCount"]:
         config["featureCount_5pUTR"] = True
         analysis.append("featureCount_5pUTR")
 
+if config["HTSeqCount"]:
+    count_over_list = config['count_over'].split(",")
+    if ("exon" in count_over_list):
+        config["HTSeqCount_exon"] = True
+        analysis.append("HTSeqCount_exon")
+    if ("gene" in count_over_list):
+        config["HTSeqCount_gene"] = True
+        analysis.append("HTSeqCount_gene")
+    if ("transcript" in count_over_list):
+        config["featureCount_transcript"] = True
+        analysis.append("HTSeqCount_transcript")
+    if ("three_prime_UTR" in count_over_list):
+        config["HTSeqCount_3pUTR"] = True
+        analysis.append("HTSeqCount_3pUTR")
+    if ("five_prime_UTR" in count_over_list):
+        config["HTSeqCount_5pUTR"] = True
+        analysis.append("HTSeqCount_5pUTR")
+
 if config["RSEM"]:
     analysis.append("RSEM")
 if config["salmon_align"]:
@@ -91,11 +109,13 @@ biotype_dir_list = config['biotypes'].split(",")
 config["analysis_type"] = "|".join(analysis)
 config["biotype_list"] = "|".join(biotype_dir_list)
 config["comparison"] = "|".join(comparison_dir_list)
+count_over = config['count_over'].split(",")
 
 wildcard_constraints:
      sample = "|".join(sample_tab.sample_name) + "|all_samples",
      lib_name="[^\.\/]+",
-     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTRn|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical",
+     analysis_type= "featureCount_exon|featureCount_gene|featureCount_transcript|featureCount_3pUTR|featureCount_5pUTR|RSEM|salmon_map|salmon_align|kallisto|mirbase_canonical|HTSeqCount_exon|HTSeqCount_gene|HTSeqCount_transcript|HTSeqCount_3pUTR|HTSeqCount_5pUTR",
+     count_over="gene|exon|transcript|three_prime_UTR|five_prime_UTR"
      #data_type= "tsv|RData"
 
 os.makedirs("DE_report",exist_ok=True)
@@ -118,6 +138,16 @@ def input_all(wildcards):
         input["featureCount_3pUTR"] = "DE_featureCount_3pUTR/final_report.html"
     if config["featureCount_5pUTR"]:
         input["featureCount_5pUTR"] = "DE_featureCount_5pUTR/final_report.html"
+    if config["HTSeqCount_exon"]:
+        input["HTSeqCount_exon"] = "DE_HTSeqCount_exon/final_report.html"
+    if config["HTSeqCount_gene"]:
+        input["HTSeqCount_gene"] = "DE_HTSeqCount_gene/final_report.html"
+    if config["HTSeqCount_transcript"]:
+        input["HTSeqCount_transcript"] = "DE_HTSeqCount_transcript/final_report.html"
+    if config["HTSeqCount_3pUTR"]:
+        input["HTSeqCount_3pUTR"] = "DE_HTSeqCount_3pUTR/final_report.html"
+    if config["HTSeqCount_5pUTR"]:
+        input["HTSeqCount_5pUTR"] = "DE_HTSeqCount_5pUTR/final_report.html"
     if config["RSEM"]:
         input["RSEM"] = "DE_RSEM/final_report.html"
     if config["salmon_map"]:
